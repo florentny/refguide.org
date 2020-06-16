@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>Florent's Guide To The Tropical Reefs - Search - Fish, Creatures and Corals species</title>
+
+        <script type="text/javascript" src="jquery/js/jquery-1.7.1.min.js"></script>
+        <script type="text/javascript" src="jquery/js/jquery-ui-1.8.16.custom.min.js"></script>
+        <script src="angular/angular.js"></script>
+        <script src="js/controllers.js"></script>
+        <script type="text/javascript" src="js/mainindex.js"></script>
+
+        <link type="text/css" href="jquery/css/ui-lightness/jquery-ui-1.8.16.custom.css" rel="Stylesheet" />
+        <link rel="stylesheet" type="text/css" href="css/all.css" />
+        <link rel="stylesheet" type="text/css" href="css/index.css" />
+        <link rel="stylesheet" type="text/css" href="css/search.css" />
+        
+         __ANALYTICS__
+
+    </head>
+
+
+    <body>
+        <script>
+            $(document).ready(SpeciesInit);
+        </script>
+
+        <div id="maincontainer">
+
+            <div id="topsection" class="banner1">
+                <h4>Florent's Guide To The</h4>
+                <h1>Tropical Reefs</h1>
+
+                <ul class="topnav">
+                    <li class="ba">
+                        <a  href="home.html">Home</a>
+                    </li>
+
+                    <li class="ba">
+                        <a href="latest.html">Latest Updates</a>
+                    </li>
+                    <li class="ba">
+                        <a href="about.html">About</a>
+                    </li>
+                    <li class="ba">
+                        <a href="http://reefguide.org/reefguide.xml">RSS</a>
+                    </li>
+                </ul>
+
+            </div>
+
+            <div id="contentwrapper" ng-app ng-controller="ListController">
+
+                <br />
+                <div class="searchpanel">
+                <br />    
+                <div style="margin: auto; text-align: center;">Search:&nbsp;<input ng-model="query" ng-change="queryChanged()"> &nbsp;&nbsp;&nbsp;Region:&nbsp;<select ng-change="regionChanged()" ng-model="selRegion" ng-options="region.name for region in regions"></select>
+                    &nbsp;<img ng-hide="busyIndicator" src="images/loading2.gif" id="loading-indicator" /><img ng-show="busyIndicator" src="images/loading.gif" id="loading-indicator" /></div><br />
+                
+                <table class="result">
+                    <thead class="result">
+                        <tr>
+                            <th></th>
+                            <th>Species Name</th>
+                            <th>Scientific Name</th>
+                            <th>Category</th>
+                        </tr>
+                    </thead>
+                    <tbody ng-repeat="species in filtered = (speciesList | filter:ReefSearch  | limitTo:querycharacters)">
+                    <tr class="red"  ng-class-even="'even'" ng-click="details = !details;thumb = doShow(species)" ng-hide="details">
+                        <td>&nbsp;&nbsp;</td><td>{{species.fullname}}</td><td><i>{{species.sname}}</i></td><td>{{species.subcategory}}</td>     
+                    </tr><tr ng-class-even="'even'" ng-click="details = !details">
+                        <td colspan="4" ng-show="details">
+                            <div style="display:inline-block;"><img class="thumb" style="height:80px;"  ng-src="{{thumb}}" /></div>
+                            <div class="searchdetails">
+                                <span class="sdname">{{species.fullname}}</span><span class="sdsname">, {{species.sname}}</span><br />
+                                Category: {{species.subcategory}}<br />
+                                Size: {{species.size}}&nbsp;&nbsp;&nbsp;&nbsp;Depth: {{species.depth}} ft.<br />
+                                <a href="{{selRegion.path}}{{species.name}}.html?search={{Xquery}}&area={{selRegion.code}}" target="_self" ng-click="details = details;$event.stopPropagation()">Go to {{species.fullname}} page</a>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+                <br /><br /><br />
+                </div>
+                <br /><br /><br />
+                <br /><br /><br />
+                <div style="color: gray;font-size:14px; text-align: center;border-top: 1px solid gray;">
+                    Web design and all pictures &copy; 2004-2019 Florent Charpin<br />
+
+                    email: &#119;&#119;&#119;&#064;&#114;&#101;&#101;&#102;&#103;&#117;&#105;&#100;&#101;&#046;&#111;&#114;&#103;
+                </div>
+                <br />
+            
+                 </div>
+
+        </div>
+    </body>
+</html>
