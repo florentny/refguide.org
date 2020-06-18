@@ -175,7 +175,6 @@ public class genReef35 {
         String[] catSname;
         String catType;
         String[] subSname;
-        final String icon;
         int count;
         String img;
         final ArrayList<details> species;
@@ -186,11 +185,17 @@ public class genReef35 {
             catSname[0] = "";
             subSname = new String[1];
             subSname[0] = "";
-            icon = "";
             count = 0;
             img = "";
             species = new ArrayList<>();
         }
+
+        public boolean isFamily() {
+            if(catType.equals("Family"))
+                return true;
+            return false;
+        }
+
     }
 
     String basepathIndexAll = null;
