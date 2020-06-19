@@ -20,11 +20,11 @@ public class exportToReef4 extends genReef35 {
     private void genExportFiles() throws Exception {
 
         String[] configFile = {"/config/reeflist.xml"};
-        try {
-            this.buildCatSpecies(genReef35.configpath + "/config/cat.csv");
-        } catch (IOException ex) {
-            Logger.getLogger(exportToReef4.class.getName()).log(Level.SEVERE, null, ex);
-        }
+//        try {
+//            this.buildCatSpecies(genReef35.configpath + "/config/cat.csv");
+//        } catch (IOException ex) {
+//            Logger.getLogger(exportToReef4.class.getName()).log(Level.SEVERE, null, ex);
+//        }
         buildAllData(configFile[0]);
 
         Map<String, List<String>> family = new HashMap<>();

@@ -30,11 +30,11 @@ public class exportToJSON extends genReef35 {
 
         //String[] configFile = {"/config/reeflist.xml","/config/reeflistcarib.xml", "/config/reeflistpac.xml", "/config/reeflistkeys.xml", "/config/reeflisthawaii.xml"};
         String[] configFile = {"/config/reeflist.xml"};
-        try {
-            this.buildCatSpecies(genReef35.configpath + "/config/cat.csv");
-        } catch(IOException ex) {
-            Logger.getLogger(exportToJSON.class.getName()).log(Level.SEVERE, null, ex);
-        }
+//        try {
+//            this.buildCatSpecies(genReef35.configpath + "/config/cat.csv");
+//        } catch(IOException ex) {
+//            Logger.getLogger(exportToJSON.class.getName()).log(Level.SEVERE, null, ex);
+//        }
         Map<String, String> family = new HashMap<>();
         try {
             ArrayList<String> species = new ArrayList<>();
