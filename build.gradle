@@ -3,7 +3,8 @@ plugins {
 }
 
 group 'us.florent'
-version '1.0-SNAPSHOT'
+//version '1.0-SNAPSHOT'
+version '3.5'
 
 repositories {
     mavenCentral()

@@ -21,47 +21,7 @@ public class exportToJSON extends genReef35 {
 
     }
 
-    public static void main(String[] args) {
-        exportToJSON reef = new exportToJSON();
-        reef.genExportFiles();
-    }
 
-    void genExportFiles() {
-
-        //String[] configFile = {"/config/reeflist.xml","/config/reeflistcarib.xml", "/config/reeflistpac.xml", "/config/reeflistkeys.xml", "/config/reeflisthawaii.xml"};
-        String[] configFile = {"/config/reeflist.xml"};
-//        try {
-//            this.buildCatSpecies(genReef35.configpath + "/config/cat.csv");
-//        } catch(IOException ex) {
-//            Logger.getLogger(exportToJSON.class.getName()).log(Level.SEVERE, null, ex);
-//        }
-        Map<String, String> family = new HashMap<>();
-        try {
-            ArrayList<String> species = new ArrayList<>();
-            for(int z = 0; z < 1; z++) {
-                buildAllData(configFile[z]);
-                for(details elem : detailsList) {
-                    if(species.contains(elem.name))
-                        continue;
-                    else
-                        species.add(elem.name);
-                    category fam = Family.get(elem.cat);
-                    if(fam.catType.equals("Family")) {
-                        family.put(elem.sname.split(" ")[0], fam.catSname[0]);
-                    }
-
-                    //System.out.println(elem.name + " " + elem.sname + " " + fam.catType + " " + fam.catSname[0] + " " + elem.cat);
-                    writeSpeciesJSON(elem);
-                }
-            }
-            for(Map.Entry<String,String> e : family.entrySet()) {
-                System.out.println(e.getKey() + " " + e.getValue());
-            }
-        } catch(IOException ex) {
-            Logger.getLogger(exportToJSON.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
-    }
 
     public void writeSpeciesJSON(genReef35.details elem) throws IOException {
         FileWriter writer = new FileWriter("/home/fc/web/reef4/config/json/" + elem.name + ".json");
