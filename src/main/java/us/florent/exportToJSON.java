@@ -31,34 +31,6 @@ public class exportToJSON extends genReef35 {
         System.out.println(genReef35.configpath + "/config/json/" + elem.name + ".json");
     }
 
-    @SuppressWarnings("unused")
-    public void writeSpeciesJSON2(genReef35.details elem) throws IOException {
-
-        //FileWriter writer = new FileWriter(genReef3.configpath + "/config/json/" + elem.name + ".json");
-
-        StringWriter writer = new StringWriter();
-
-        try (JsonGenerator gen = Json.createGenerator(writer)) {
-            getSpeciesJSON(gen, elem);
-        }
-
-        String json = writer.toString();
-        try (FileWriter file = new FileWriter(genReef35.configpath + "/config/json/" + elem.name + ".json")) {
-            file.write(json);
-        }
-
-        MongoDatabase db = getMongoDB();
-
-        db.getCollection("species").replaceOne(new Document("id", elem.name), Document.parse(json), new ReplaceOptions().upsert(true));
-
-        System.out.println(genReef35.configpath + "/config/json/" + elem.name + ".json");
-    }
-
-    @SuppressWarnings("unused")
-    public JsonGenerator getSpeciesJSON2(JsonGenerator gen, genReef35.details elem) {
-
-        return gen;
-    }
 
     public JsonGenerator getSpeciesJSON(JsonGenerator gen, genReef35.details elem) {
 
@@ -74,8 +46,8 @@ public class exportToJSON extends genReef35 {
                 }
             }
         }
-        if(elem.endemic)
-            endemic = true;
+        //if(elem.endemic)
+          //  endemic = true;
         if(elem.asname == null) {
             elem.asname = "";
         }
@@ -113,13 +85,13 @@ public class exportToJSON extends genReef35 {
             gen.writeEnd();
         }
         gen.writeStartArray("thumbs");
-        gen.write(Integer.parseInt(elem.fishRef));
-        if(!elem.fishRef2.isEmpty()) {
-            gen.write(Integer.parseInt(elem.fishRef2));
-        }
-        if(!elem.fishRef3.isEmpty()) {
-            gen.write(Integer.parseInt(elem.fishRef3));
-        }
+//        gen.write(Integer.parseInt(elem.fishRef));
+//        if(!elem.fishRef2.isEmpty()) {
+//            gen.write(Integer.parseInt(elem.fishRef2));
+//        }
+//        if(!elem.fishRef3.isEmpty()) {
+//            gen.write(Integer.parseInt(elem.fishRef3));
+//        }
         gen.writeEnd();
 
         gen.writeStartArray("photos");
