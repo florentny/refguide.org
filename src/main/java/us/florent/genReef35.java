@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
@@ -42,7 +43,6 @@ public class genReef35 {
             page = 1;
         }
     }
-
 
     record Genus(String id, String famname, String subname) {
         String fullFamily() {
@@ -128,7 +128,8 @@ public class genReef35 {
     }
 
     record Species(String id, String name, String sciName, String size, String depth, boolean endemic, List<String> dist,
-                   List<photo> photo, List<Integer> thumbs, String synonyms, String aka, String note, List<String> dispNames) {
+                   List<photo> photo, List<Integer> thumbs, String synonyms, String aka, String note, List<String> dispNames,
+                   Date update) {
         String genus() {
             if(sciName.isBlank())
                 return id;
@@ -154,7 +155,7 @@ public class genReef35 {
         private final Map<String, Species> species = new HashMap<>();
 
         void add(String id, String name, String sciName,String size, String depth, boolean endemic, List<String> dist, List<Document> photos,
-                 List<Integer> thumbs, String synonyms, String aka, String note, List<String> dispNames) {
+                 List<Integer> thumbs, String synonyms, String aka, String note, List<String> dispNames, Date update) {
             List<photo> p = new ArrayList<>();
             for(Document doc : photos)
                 p.add(new photo(doc.getInteger("id"), doc.getString("location"), doc.getString("type"), doc.getString("comment")));
@@ -163,7 +164,7 @@ public class genReef35 {
                 long ed = depthmetric(Integer.parseInt(depth.split("-")[1]));
                 depth = depth + " ft. (" + sd + "-" + ed + " m)";
             }
-            species.put(id, new Species(id, name, sciName, size, depth, endemic, dist, p, thumbs, synonyms, aka, note, dispNames));
+            species.put(id, new Species(id, name, sciName, size, depth, endemic, dist, p, thumbs, synonyms, aka, note, dispNames, update));
         }
 
         Collection<Species> getAllSpecies() {
@@ -202,6 +203,10 @@ public class genReef35 {
             return getSpeciesNameFromCat(category).stream().map(x -> species_collection.getSpecies(x)).collect(Collectors.toList());
         }
 
+        List<Species> getLatest() {
+            return species.values().stream().filter(s -> s.update != null).sorted(Comparator.comparing(Species::update, Comparator.reverseOrder())).collect(Collectors.toList());
+        }
+
     }
 
     String basepathIndexAll = null;
@@ -217,7 +222,7 @@ public class genReef35 {
    // int __count = 0;
 
     public genReef35() {
-        Logger mongoLogger = LoggerFactory.getLogger("org.mongodb.driver");
+        //Logger mongoLogger = LoggerFactory.getLogger("org.mongodb.driver");
 
     }
 
@@ -368,7 +373,7 @@ public class genReef35 {
     }
 
     protected MongoDatabase getMongoDB() {
-       // Logger.getLogger("org.mongodb.driver.cluster").setLevel(Level.OFF);
+
         if(db == null) {
 //            CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
 //                    fromProviders(PojoCodecProvider.builder().automatic(true).build()));
@@ -381,14 +386,6 @@ public class genReef35 {
         }
         return db;
     }
-
-//    private List<String> getSpeciesName(String category) {
-//        return genus_classification.getFamily(category).stream().
-//                flatMap(s -> genus_classification.getGenus(s).stream()).collect(Collectors.toList())
-//                .stream().flatMap(s -> species_collection.getSpeciesFromGenus(s).stream()).collect(Collectors.toList());
-//    }
-
-
 
     protected void buildDB(String Config, int reefRef) {
 
@@ -469,7 +466,7 @@ public class genReef35 {
                             doc.getString("size"), doc.getString("depth"), doc.getBoolean("endemic", false),
                             dist, doc.getList("photos", Document.class), doc.getList("thumbs", Integer.class),
                             String.join(", ", aSciName), String.join(", ", aka),
-                            doc.getString("note"),  doc.getList("dispNames", String.class));
+                            doc.getString("note"),  doc.getList("dispNames", String.class), doc.getDate("update"));
                 }
             }
         }
@@ -580,24 +577,18 @@ public class genReef35 {
 
             String latestline;
             String date;
-            java.io.BufferedReader latestfile = new java.io.BufferedReader(new java.io.FileReader(configpath + "/config/latest"));
+            var latest_list = species_collection.getLatest();
             var latestGroup = new group();
-            while((latestline = latestfile.readLine()) != null) {
-                latestline = latestline.trim();
-                date = null;
-                if(latestline.contains("|")) {
-                    date = latestline.split("\\|")[1];
-                    latestline = latestline.split("\\|")[0];
-                }
-
-                Species sp = species_collection.getSpecies(latestline);
+            String pattern = "dd MMM YYYY HH:mm Z";
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+            for(var sp : latest_list) {
                 if(sp == null)
                     continue;
                 if(!checkRegion(reefRef, sp.dist))
                     continue;
-                if(latestGroup.species.size() > 50)
+                if(latestGroup.species.size() > 100)
                         continue;
-
+                date = simpleDateFormat.format(sp.update);
                 latestGroup.species.add(sp);
                 latestGroup.dates.add(date);
 
@@ -1208,7 +1199,11 @@ public class genReef35 {
             }
             StringBuilder html_frag = new StringBuilder();
 
-            html_frag.append("<a href=\"").append("XXXXXX").append("\">\n");
+            List<Species> finalSp_list = sp_list;
+            int index = groupList.stream().filter(g -> g.species.contains(finalSp_list.get(0))).findAny().orElse(null).index;
+
+
+            html_frag.append("<a href=\"").append("index").append(index).append(".html#").append(cat.replace(" ", "_")).append("\">\n");
             html_frag.append("<div class=\"famInfo\">\n");
             html_frag.append("<p class=\"label\">").append(cat).append("</p>\n");
             String img;
@@ -1279,6 +1274,11 @@ public class genReef35 {
         String outString;
 
         outString = readFile("index_3.html");
+
+        if(g.index == -1)
+            outString = outString.replaceAll("__HEADLINE__", "<div style=\"margin: auto; width: 100%; text-align: center;color: #dcd637;font-size:24pt;padding:10px;\">Latest Updates</div>");
+        else
+            outString = outString.replaceAll("__HEADLINE__","");
 
         outString = processSelectedGuideMenu(outString, reefRef);
 
