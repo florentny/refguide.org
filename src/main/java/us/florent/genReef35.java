@@ -97,7 +97,7 @@ public class genReef35 {
         }
 
         Set<String> getAllCat() {
-            return famCat.values().stream().map(v -> v.cat).collect(Collectors.toSet());
+            return famCat.values().stream().map(v -> v.cat).collect(Collectors.toCollection(TreeSet::new));
         }
 
         List<String> getGenus(String family) {
@@ -266,12 +266,11 @@ public class genReef35 {
             int keys = process("/config/reeflistcarib4.xml", basepathIndexKeys, 3, hearderKeys);
             int key_pics = numPhotos;
             System.out.println("Processing Hawaii:");
-            int hawaii = process("/config/reeflist4.xml", basepathIndexHawaii, 4, hearderHawaii);
+            int hawaii = process("/config/reeflisthawaii4.xml", basepathIndexHawaii, 4, hearderHawaii);
             int hawaii_pics = numPhotos;
             System.out.println("Processing Baja:");
-            /* int baja = */ process("/config/reeflist4.xml", basepathIndexBaja, 5, hearderHawaii);
-            //int baja_pics = numPhotos;
-
+            int baja = process("/config/reeflistbaja4.xml", basepathIndexBaja, 5, hearderHawaii);
+            int baja_pics = numPhotos;
 
             String outString = readFile("about.html");
             outString = outString.replace("__ALL__", Integer.toString(all));
@@ -284,6 +283,8 @@ public class genReef35 {
             outString = outString.replace("__KEYSPIC__", Integer.toString(key_pics));
             outString = outString.replace("__HAWAII__", Integer.toString(hawaii));
             outString = outString.replace("__HAWAIIPIC__", Integer.toString(hawaii_pics));
+            outString = outString.replace("__BAJA__", Integer.toString(baja));
+            outString = outString.replace("__BAJAPIC__", Integer.toString(baja_pics));
 
             if(analytics) {
                 outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
@@ -1716,8 +1717,8 @@ public class genReef35 {
 //        }
 
         //reef.createSite(genReef35.configpath + "/clean", false);
-        //reef.createSite(genReef35.configpath, true);
-        reef.createSite(genReef35.configpath, false);
+        reef.createSite(genReef35.configpath, true);
+        //reef.createSite(genReef35.configpath, false);
     }
 
     private void copyFile(String source, String dest) throws IOException {
