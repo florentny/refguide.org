@@ -641,7 +641,7 @@ public class genReef35 {
         sp_list.forEach(sp -> {
             outString.append("<item><title>");
             outString.append(sp.name).append("</title><link>http://reefguide.org/").append(sp.id).append(".html</link>");
-            outString.append("<description>&lt;img src=\"http://reefguide.org/pix/thumb3/").append(sp.id).append(species_collection.getSpecies(sp.id).photo.get(0).id).append(".jpg\" /&gt;&lt;br /&gt;");
+            outString.append("<description>&lt;img src=\"http://reefguide.org/pix/thumb3/").append(sp.id).append(sp.thumbs.get(0)).append(".jpg\" /&gt;&lt;br /&gt;");
             outString.append(sp.name).append(" (").append(sp.sciName).append(")&lt;br /&gt;");
             outString.append("Category: ").append(species_collection.getCat(sp.id)).append("&lt;br /&gt;");
             outString.append("Size: ").append(sp.size).append("&lt;br /&gt;");
