@@ -292,12 +292,7 @@ public class genReef35 {
                 outString = outString.replaceAll("__ANALYTICS__", "");
             }
 
-            if(!compareToFile(outString, basepathIndexAll + "/about.html")) {
-                try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(basepathIndexAll + "/about.html"))) {
-                    outFile.write(outString);
-                }
-                System.out.println(basepathIndexAll + "/about.html");
-            }
+            writeToFile(outString, basepathIndexAll + "/about.html");
 
             outString = readFile("home.html");
             outString = outString.replace("__ALL__", Integer.toString(all));
@@ -312,12 +307,7 @@ public class genReef35 {
                 outString = outString.replaceAll("__ANALYTICS__", "");
             }
 
-            if(!compareToFile(outString, basepathIndexAll + "/home.html")) {
-                try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(basepathIndexAll + "/home.html"))) {
-                    outFile.write(outString);
-                }
-                System.out.println(basepathIndexAll + "/home.html");
-            }
+            writeToFile(outString, basepathIndexAll + "/home.html");
 
             outString = readFile("search.html");
             if(analytics) {
@@ -326,12 +316,7 @@ public class genReef35 {
                 outString = outString.replaceAll("__ANALYTICS__", "");
             }
 
-            if(!compareToFile(outString, basepathIndexAll + "/search.html")) {
-                try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(basepathIndexAll + "/search.html"))) {
-                    outFile.write(outString);
-                }
-                System.out.println(basepathIndexAll + "/search.html");
-            }
+            writeToFile(outString, basepathIndexAll + "/search.html");
 
             outString = readFile("unknow.html");
             outString = outString.replace("__MAIN__", getUnknowSpecies(configpath + "/config/unknow.txt"));
@@ -342,12 +327,7 @@ public class genReef35 {
                 outString = outString.replaceAll("__ANALYTICS__", "");
             }
 
-            if(!compareToFile(outString, basepathIndexAll + "/unknow.html")) {
-                try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(basepathIndexAll + "/unknow.html"))) {
-                    outFile.write(outString);
-                }
-                System.out.println(basepathIndexAll + "/unknow.html");
-            }
+            writeToFile(outString, basepathIndexAll + "/unknow.html");
 
         } catch(IOException ex) {
             java.util.logging.Logger.getLogger(genReef35.class.getName()).log(Level.SEVERE, null, ex);
@@ -661,7 +641,7 @@ public class genReef35 {
         sp_list.forEach(sp -> {
             outString.append("<item><title>");
             outString.append(sp.name).append("</title><link>http://reefguide.org/").append(sp.id).append(".html</link>");
-            outString.append("<description>&lt;img src=\"http://reefguide.org/pix/thumb3/").append(sp.id).append(species_collection.getSpecies(sp.id).photo.get(0)).append(".jpg\" /&gt;&lt;br /&gt;");
+            outString.append("<description>&lt;img src=\"http://reefguide.org/pix/thumb3/").append(sp.id).append(species_collection.getSpecies(sp.id).photo.get(0).id).append(".jpg\" /&gt;&lt;br /&gt;");
             outString.append(sp.name).append(" (").append(sp.sciName).append(")&lt;br /&gt;");
             outString.append("Category: ").append(species_collection.getCat(sp.id)).append("&lt;br /&gt;");
             outString.append("Size: ").append(sp.size).append("&lt;br /&gt;");
@@ -676,12 +656,7 @@ public class genReef35 {
         });
         outString.append("</channel></rss>");
 
-        if(!compareToFile(outString.toString(), baseIndex + "/reefguide.xml")) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/reefguide.xml"))) {
-                outFile.write(outString.toString());
-            }
-            System.out.println(baseIndex + "/reefguide.xml");
-        }
+        writeToFile(outString.toString(), baseIndex + "/reefguide.xml");
 
     }
 
@@ -770,13 +745,7 @@ public class genReef35 {
         outString = outString.replaceAll("__INDEX_HTML__", html.toString());
         outString = outString.replaceAll("__TITLE__", " - " + subdir + " - Show all");
 
-        boolean sameFile = compareToFile(outString, baseIndex + "/" + cat.replace(' ', '_') + ".html");
-        if(!sameFile) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/" + cat.replace(' ', '_') + ".html"))) {
-                outFile.write(outString);
-            }
-            System.out.println(baseIndex + "/" +cat.replace(' ', '_') + ".html");
-        }
+        writeToFile(outString, baseIndex + "/" + cat.replace(' ', '_') + ".html");
 
 
     }
@@ -956,12 +925,8 @@ public class genReef35 {
         outString = outString.replaceAll("__EXTREF__", "");
 
         outString = outString.replaceAll("__FISH_HTML__", output.toString());
-        if(!compareToFile(outString, baseIndex + "/" + sp.id + ".html")) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/" + sp.id + ".html"))) {
-                outFile.write(outString);
-            }
-            System.out.println(baseIndex + "/" + sp.id + ".html");
-        }
+
+        writeToFile(outString, baseIndex + "/" + sp.id + ".html");
     }
 
     protected void genFishPixFile(Species sp, photo ph, String cat, String baseIndex, int reefRef, String banner) throws IOException {
@@ -1072,13 +1037,7 @@ public class genReef35 {
             outString = outString.replaceAll("__ANALYTICS__", "");
         }
 
-
-        if(!compareToFile(outString, baseIndex + "/pixhtml/" + thumbimg + ".html")) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/pixhtml/" + thumbimg + ".html"))) {
-                outFile.write(outString);
-            }
-            System.out.println(baseIndex + "/pixhtml/" + thumbimg + ".html");
-        }
+        writeToFile(outString, baseIndex + "/pixhtml/" + thumbimg + ".html");
 
     }
 
@@ -1243,14 +1202,19 @@ public class genReef35 {
         outString = outString.replaceAll("__INDEX_HTML__", html.toString());
         outString = outString.replaceAll("__TITLE__", title);
         String name = "index_" + type + ".html";
-        boolean sameFile = compareToFile(outString, baseIndex + "/" + name);
+        writeToFile(outString, baseIndex + "/" + name);
+
+
+    }
+
+    private void writeToFile(String outString, String filename) throws IOException {
+        boolean sameFile = compareToFile(outString, filename);
         if(!sameFile) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/" + name))) {
+            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(filename))) {
                 outFile.write(outString);
             }
-            System.out.println(baseIndex + "/" + name);
+            System.out.println(filename);
         }
-
 
     }
 
@@ -1379,13 +1343,7 @@ public class genReef35 {
 
         outString = outString.replaceAll("__ACTIVE__", Integer.toString(active[0]));
 
-        boolean sameFile = compareToFile(outString, baseIndex + "/" + indexName);
-        if(!sameFile) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/" + indexName))) {
-                outFile.write(outString);
-            }
-            System.out.println(baseIndex + "/" + indexName);
-        }
+        writeToFile(outString, baseIndex + "/" + indexName);
     }
 
     protected void genCatalogFiles(Collection<Species> sp_list,
@@ -1457,13 +1415,7 @@ public class genReef35 {
 
         outString = outString.replaceAll("__LINKS__", "By Common Name | <a class=\"catalog\" href=\"cat_grp.html\">By Category</a> | <a class=\"catalog\" href=\"cat_sci.html\">By Scientific Names</a>");
 
-        boolean sameFile = compareToFile(outString, baseIndex + "/cat.html");
-        if(!sameFile) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/cat.html"))) {
-                outFile.write(outString);
-            }
-            System.out.println(baseIndex + "/cat.html");
-        }
+        writeToFile(outString, baseIndex + "/cat.html");
 
 
         outString = readFile("index_catalog.html");
@@ -1505,13 +1457,7 @@ public class genReef35 {
         }
         outString = outString.replaceAll("__LINKS__", "<a class=\"catalog\" href=\"cat.html\">By Common Name</a> | <a class=\"catalog\" href=\"cat_grp.html\">By Category</a> | By Scientific Names");
 
-        sameFile = compareToFile(outString, baseIndex + "/cat_sci.html");
-        if(!sameFile) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/cat_sci.html"))) {
-                outFile.write(outString);
-            }
-            System.out.println(baseIndex + "/cat_sci.html");
-        }
+        writeToFile(outString, baseIndex + "/cat_sci.html");
 
 
         outString = readFile("index_catalog.html");
@@ -1549,13 +1495,7 @@ public class genReef35 {
 
         outString = outString.replaceAll("__LINKS__", "<a class=\"catalog\" href=\"cat.html\">By Common Name</a> |By Category | <a class=\"catalog\" href=\"cat_sci.html\">By Scientific Names</a>");
 
-        sameFile = compareToFile(outString, baseIndex + "/cat_grp.html");
-        if(!sameFile) {
-            try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(baseIndex + "/cat_grp.html"))) {
-                outFile.write(outString);
-            }
-            System.out.println(baseIndex + "/cat_grp.html");
-        }
+        writeToFile(outString, baseIndex + "/cat_grp.html");
 
     }
 
@@ -1702,19 +1642,6 @@ public class genReef35 {
             reef.basepathIndexAll = args[0];
             configpath = args[0];
         }
-        //String captions = reef.buildCaptionFile("/home/fc/web/reef3");
-//        try {
-//            reef.buildCatSpecies(reef.basepathIndexAll + "/config/cat.csv");
-
-//            if(genReef3.compareToFile(captions, reef.basepathIndexAll + "/pix/captions") == false) {
-//                try (java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(reef.basepathIndexAll + "/pix/captions"))) {
-//                    outFile.write(captions);
-//                }
-//                System.out.println(reef.basepathIndexAll + "/pix/captions");
-//            }
-//        } catch(IOException ex) {
-//            Logger.getLogger(genReef35.class.getName()).log(Level.SEVERE, null, ex);
-//        }
 
         //reef.createSite(genReef35.configpath + "/clean", false);
         reef.createSite(genReef35.configpath, true);
