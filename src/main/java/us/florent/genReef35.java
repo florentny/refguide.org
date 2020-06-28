@@ -16,8 +16,6 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 import javax.json.Json;
 import javax.json.stream.JsonGenerator;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 import org.bson.Document;
@@ -32,14 +30,15 @@ public class genReef35 {
 
     static private MongoDatabase db = null;
 
-    protected static class group {
+    protected static class page {
         final List<Species> species = new ArrayList<>();
         final List<String> dates = new ArrayList<>();
+        final Map<String, String> group = new HashMap<>();
         String name;
         int start;
         int page;
         int index;
-        public group() {
+        public page() {
             page = 1;
         }
     }
@@ -63,9 +62,18 @@ public class genReef35 {
         private final Map<String, Genus> genusFam = new HashMap<>();
         private final Map<String, Category> famCat = new HashMap<>();
         private final Map<String, String> CatSpeeciesType = new HashMap<>();
+        private final Map<String, List<String>> groups = new HashMap<>();
 
         void add(String genus, String family, String subfamily) {
             genusFam.put(genus, new Genus(genus, family, subfamily));
+        }
+
+        void addGroup(String name, List<String> list) {
+            groups.put(name, list);
+        }
+
+        List<String> getGroup(String name) {
+            return groups.get(name);
         }
 
         void addCatSpeciesType(String cat, String type) {
@@ -212,7 +220,7 @@ public class genReef35 {
     String basepathIndexAll = null;
     public boolean analytics = false;
     protected int numPhotos = 0;
-    protected java.util.ArrayList<group> groupList = new java.util.ArrayList<>();
+    protected java.util.ArrayList<page> pageList = new java.util.ArrayList<>();
 
     final String[] reefId = {"all", "carib", "indopac", "hawaii", "keys", "baja"};
     final String[] reefName = {"Tropical Reefs", "Caribbean Reefs", "Tropical Pacific Reefs", "South Florida Reefs", "Hawaii Reefs", "Eastern Pacific Reefs"};
@@ -233,6 +241,19 @@ public class genReef35 {
             return "Sweetlips";
         if(reefRef == 2 && cat.equals("Combtooth Blennies"))
             return "Blennies";
+        if(cat.equals("Sponges"))
+            return "Common Sponges";
+        return cat;
+    }
+
+    static private String  replaceCat(String cat, int reefRef) {
+
+        if(reefRef == 0) {
+            return cat.replace("Grunts", "Grunts/Sweetlips");
+        }
+        if(reefRef == 2) {
+            return cat.replace("Grunts", "Sweetlips");
+        }
         return cat;
     }
 
@@ -287,9 +308,9 @@ public class genReef35 {
             outString = outString.replace("__BAJAPIC__", Integer.toString(baja_pics));
 
             if(analytics) {
-                outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+                outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
             } else {
-                outString = outString.replaceAll("__ANALYTICS__", "");
+                outString = outString.replace("__ANALYTICS__", "");
             }
 
             writeToFile(outString, basepathIndexAll + "/about.html");
@@ -302,18 +323,18 @@ public class genReef35 {
             outString = outString.replace("__HAWAII__", Integer.toString(hawaii));
 
             if(analytics) {
-                outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+                outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
             } else {
-                outString = outString.replaceAll("__ANALYTICS__", "");
+                outString = outString.replace("__ANALYTICS__", "");
             }
 
             writeToFile(outString, basepathIndexAll + "/home.html");
 
             outString = readFile("search.html");
             if(analytics) {
-                outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+                outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
             } else {
-                outString = outString.replaceAll("__ANALYTICS__", "");
+                outString = outString.replace("__ANALYTICS__", "");
             }
 
             writeToFile(outString, basepathIndexAll + "/search.html");
@@ -322,9 +343,9 @@ public class genReef35 {
             outString = outString.replace("__MAIN__", getUnknowSpecies(configpath + "/config/unknow.txt"));
 
             if(analytics) {
-                outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+                outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
             } else {
-                outString = outString.replaceAll("__ANALYTICS__", "");
+                outString = outString.replace("__ANALYTICS__", "");
             }
 
             writeToFile(outString, basepathIndexAll + "/unknow.html");
@@ -340,7 +361,7 @@ public class genReef35 {
 
         int index = 1;
         int start = 0;
-        for(group g : groupList) {
+        for(page g : pageList) {
             if(g.index == 0) {
                 g.index = index++;
             }
@@ -373,34 +394,45 @@ public class genReef35 {
         try {
             db = getMongoDB();
             loadDataBase(db, reefRef);
-            groupList = new java.util.ArrayList<>();
+            pageList = new java.util.ArrayList<>();
             java.io.BufferedReader reeffile = new java.io.BufferedReader(new java.io.FileReader(configpath + Config));
             String masterline;
             String cat;
             String catType = null;
-            group _group = null;
+            page _page = null;
             while((masterline = reeffile.readLine()) != null) {
                 masterline = masterline.trim();
+                if(masterline.startsWith("</")) {
+                    continue;
+                }
                 if(masterline.startsWith("<dir")) {
-                    _group = new group();
-                    _group.name = getName(masterline);
+                    _page = new page();
+                    _page.name = replaceCat(getName(masterline), reefRef);
                     catType = getSpeciesType(masterline) == null ? catType : getSpeciesType(masterline);
                     masterline = reeffile.readLine();
-                    _group.index = Integer.parseInt(getIndex(masterline));
-                    groupList.add(_group);
+                    _page.index = Integer.parseInt(getIndex(masterline));
+                    pageList.add(_page);
                 } else if(masterline.startsWith("<page")) {
-                    _group = new group();
-                    _group.name = groupList.get(groupList.size() - 1).name;
-                    _group.index = Integer.parseInt(getIndex(masterline));
-                    _group.page = groupList.get(groupList.size() - 1).page + 1;
-                    groupList.add(_group);
-                } else {
-                    cat = overrideCat(masterline, reefRef);
-                    genus_classification.addCatSpeciesType(cat, catType);
-                    List<String> sl = species_collection.getSpeciesNameFromCat(cat);
-                    for(var sp : sl) {
-                        var species = species_collection.getSpecies(sp);
-                        _group.species.add(species);
+                    _page = new page();
+                    _page.name = pageList.get(pageList.size() - 1).name;
+                    _page.index = Integer.parseInt(getIndex(masterline));
+                    _page.page = pageList.get(pageList.size() - 1).page + 1;
+                    pageList.add(_page);
+                } else if(_page != null) {
+                    var group = genus_classification.getGroup(masterline);
+                    if(group == null) {
+                        group = new ArrayList<>();
+                        group.add(masterline);
+                    }
+                    for(var g : group) {
+                        cat = overrideCat(g, reefRef);
+                        _page.group.put(cat, overrideCat(masterline, reefRef));
+                        genus_classification.addCatSpeciesType(cat, catType);
+                        List<String> sl = species_collection.getSpeciesNameFromCat(cat);
+                        for(var sp : sl) {
+                            var species = species_collection.getSpecies(sp);
+                            _page.species.add(species);
+                        }
                     }
                 }
             }
@@ -452,7 +484,13 @@ public class genReef35 {
             }
         }
 
-
+        collection = db.getCollection("groups");
+        try(MongoCursor<Document> cur = collection.find().iterator()) {
+            while(cur.hasNext()) {
+                var doc = cur.next();
+                genus_classification.addGroup(doc.getString("Name"), doc.getList("category", String.class));
+            }
+        }
     }
 
     private boolean checkRegion(int reefRef, List<String> dist) {
@@ -535,7 +573,7 @@ public class genReef35 {
         buildAllData(configFile, reefRef);
         try {
             genCatalogFiles(species_collection.getAllSpecies(), baseIndex, reefRef, headers[0]);
-            for(var g : groupList) {
+            for(var g : pageList) {
                 genIndexFile(baseIndex, g, reefRef, headers[headercount]);
                 if(++headercount == headers.length) {
                     headercount = 0;
@@ -559,7 +597,7 @@ public class genReef35 {
             String latestline;
             String date;
             var latest_list = species_collection.getLatest();
-            var latestGroup = new group();
+            var latestGroup = new page();
             String pattern = "dd MMM YYYY HH:mm Z";
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
             for(var sp : latest_list) {
@@ -624,7 +662,7 @@ public class genReef35 {
         return (s==null) ? "" : s;
     }
 
-    private void genRSS(group group, String baseIndex) throws IOException {
+    private void genRSS(page group, String baseIndex) throws IOException {
         if(!baseIndex.equals(basepathIndexAll)) {
             return;
         }
@@ -718,43 +756,54 @@ public class genReef35 {
         }
 
 
-        outString = outString.replaceAll("__IMG_REEF__", img_reef.toString());
-        outString = outString.replaceAll("__LINK_REEF__", link_reef.toString());
-        outString = outString.replaceAll("__NAME_REEF__", reef_name.toString());
-        outString = outString.replaceAll("__NAME_SCI__", sci_name.toString());
-        outString = outString.replaceAll("__CAT_REEF_", cat_reef.toString());
-        outString = outString.replaceAll("__REF_REEF__", ref_reef.toString());
-        outString = outString.replaceAll("__MAX_COL__", "0");
-        outString = outString.replaceAll("__PREV__", prev);
+        outString = outString.replace("__IMG_REEF__", img_reef.toString());
+        outString = outString.replace("__LINK_REEF__", link_reef.toString());
+        outString = outString.replace("__NAME_REEF__", reef_name.toString());
+        outString = outString.replace("__NAME_SCI__", sci_name.toString());
+        outString = outString.replace("__CAT_REEF_", cat_reef.toString());
+        outString = outString.replace("__REF_REEF__", ref_reef.toString());
+        outString = outString.replace("__MAX_COL__", "0");
+        outString = outString.replace("__PREV__", prev);
 
-        outString = outString.replaceAll("__NEXT__", next);
-        outString = outString.replaceAll("__REEF__", reefName[reefRef]);
-        outString = outString.replaceAll("__PRENAME__", preName);
-        outString = outString.replaceAll("__BASE__", base);
-        outString = outString.replaceAll("__BANNER__", header);
+        outString = outString.replace("__NEXT__", next);
+        outString = outString.replace("__REEF__", reefName[reefRef]);
+        outString = outString.replace("__PRENAME__", preName);
+        outString = outString.replace("__BASE__", base);
+        outString = outString.replace("__BANNER__", header);
 
         if(analytics) {
-            outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+            outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
         } else {
-            outString = outString.replaceAll("__ANALYTICS__", "");
+            outString = outString.replace("__ANALYTICS__", "");
         }
 
 
         StringBuilder html = new StringBuilder();
 
-        outString = outString.replaceAll("__INDEX_HTML__", html.toString());
-        outString = outString.replaceAll("__TITLE__", " - " + subdir + " - Show all");
+        outString = outString.replace("__INDEX_HTML__", html.toString());
+        outString = outString.replace("__TITLE__", " - " + subdir + " - Show all");
 
         writeToFile(outString, baseIndex + "/" + cat.replace(' ', '_') + ".html");
 
 
     }
 
-    protected void genFishFile(Species sp, String baseIndex, int reefRef, String header, group group) throws IOException {
+    static String[] fishFile = new String[6];
+    protected void genFishFile(Species sp, String baseIndex, int reefRef, String header, page group) throws IOException {
 
-        String outString = readFile("species.html");
+        if(fishFile[reefRef] == null) {
+            fishFile[reefRef] = readFile("species.html");
+            fishFile[reefRef] = processSelectedGuideMenu(fishFile[reefRef], reefRef);
+            fishFile[reefRef] =  fishFile[reefRef].replace("__REEFREF__", Integer.toString(reefRef));
+            fishFile[reefRef] =  fishFile[reefRef].replace("__REEF__", reefName[reefRef]);
+            if(analytics) {
+                fishFile[reefRef] = fishFile[reefRef].replace("__ANALYTICS__", readFile("analytics.xml"));
+            } else {
+                fishFile[reefRef] = fishFile[reefRef].replace("__ANALYTICS__", "");
+            }
 
-        outString = processSelectedGuideMenu(outString, reefRef);
+        }
+        String outString = fishFile[reefRef];
 
         StringBuilder output = new StringBuilder();
         StringBuilder text = new StringBuilder();
@@ -766,27 +815,26 @@ public class genReef35 {
         if(preReefName[reefRef].length() > 0) {
             prename = "<span class=\"pretitle\">" + preReefName[reefRef] + "</span>";
         }
-        outString = outString.replaceAll("__REEFREF__", Integer.toString(reefRef));
-        outString = outString.replaceAll("__REEF__", reefName[reefRef]);
-        outString = outString.replaceAll("__PRENAME__", prename);
 
-        outString = outString.replaceAll("__GROUP__", group.name);
+        outString = outString.replace("__PRENAME__", prename);
 
-        outString = outString.replaceAll("__NAME2__", sp.name);
+        outString = outString.replace("__GROUP__", group.name);
+
+        outString = outString.replace("__NAME2__", sp.name);
         if((sp.photo.size() == 1) && (sp.photo.get(0).type != null)) {
-            outString = outString.replaceAll("__NAME__", sp.name + " - " + sp.photo.get(0).type);
+            outString = outString.replace("__NAME__", sp.name + " - " + sp.photo.get(0).type);
         } else {
-            outString = outString.replaceAll("__NAME__", sp.name);
+            outString = outString.replace("__NAME__", sp.name);
         }
         if(!sp.sciName().equals("")) {
-            outString = outString.replaceAll("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName()+ "</span>");
+            outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName()+ "</span>");
         } else {
-            outString = outString.replaceAll("__SCINAME__", "");
+            outString = outString.replace("__SCINAME__", "");
         }
         if(!sp.synonyms.isBlank()) {
-            outString = outString.replaceAll("__ASCINAME__", "<span class=\"details\">Synonyms: </span><span class=\"sntitle2\">" + sp.synonyms + "</span>");
+            outString = outString.replace("__ASCINAME__", "<span class=\"details\">Synonyms: </span><span class=\"sntitle2\">" + sp.synonyms + "</span>");
         } else {
-            outString = outString.replaceAll("__ASCINAME__", "");
+            outString = outString.replace("__ASCINAME__", "");
         }
 
         String family = species_collection.getFamily(sp.id);
@@ -803,61 +851,57 @@ public class genReef35 {
             catType =  c[1];
         }
 
-        outString = outString.replaceAll("__TITLE__", sp.name + " - " + sp.sciName + " - " + cat + " - " + sp.aka);
+        outString = outString.replace("__TITLE__", sp.name + " - " + sp.sciName + " - " + cat + " - " + sp.aka);
 
         if(catType.equals("Family")) {
-            outString = outString.replaceAll("__FAM__", "<span class=\"details\">" + catType + ": </span><span class=\"sntitle\">" + f + "</span>");
+            outString = outString.replace("__FAM__", "<span class=\"details\">" + catType + ": </span><span class=\"sntitle\">" + f + "</span>");
         } else {
-            outString = outString.replaceAll("__FAM__", "<span class=\"details\">" + catType + ": </span><span class=\"sntitle\">" + altCat + "</span>");
+            outString = outString.replace("__FAM__", "<span class=\"details\">" + catType + ": </span><span class=\"sntitle\">" + altCat + "</span>");
         }
         if(catType.equals("Family") && family.contains("/")) {
             f = family.split("/")[1];
-            outString = outString.replaceAll("__SUBFAM__", "<span class=\"details\">" + "Subfamily" + ": </span><span class=\"sntitle\">" + f + "</span>");
+            outString = outString.replace("__SUBFAM__", "<span class=\"details\">" + "Subfamily" + ": </span><span class=\"sntitle\">" + f + "</span>");
         } else {
-            outString = outString.replaceAll("__SUBFAM__", "");
+            outString = outString.replace("__SUBFAM__", "");
         }
 
-        outString = outString.replaceAll("__CAT__", cat);
-        outString = outString.replaceAll("__CAT1__", cat.replaceAll(" ", "_"));
-        outString = outString.replaceAll("__MAINCAT__", cat);
-        outString = outString.replaceAll("__DIST1__",  String.join(", ", sp.dist) + " - " + sp.aka);
+        outString = outString.replace("__CAT__", cat);
+        outString = outString.replace("__CAT1__", cat.replace(" ", "_"));
+        outString = outString.replace("__MAINCAT__", cat);
+        outString = outString.replace("__DIST1__",  String.join(", ", sp.dist) + " - " + sp.aka);
 
-        outString = outString.replaceAll("__DIST__", "<span class=\"details\">Distribution: </span><span class=\"details2\">" + String.join(", ", sp.dist)
+        outString = outString.replace("__DIST__", "<span class=\"details\">Distribution: </span><span class=\"details2\">" + String.join(", ", sp.dist)
                     + (sp.endemic ? " (Endemic)" : "" ) + "</span>");
 
         if(!sp.aka.equals("")) {
-            outString = outString.replaceAll("__AKA__", "<span class=\"details\">Also known as: </span><span class=\"details2\">" + sp.aka + "</span>");
+            outString = outString.replace("__AKA__", "<span class=\"details\">Also known as: </span><span class=\"details2\">" + sp.aka + "</span>");
         } else {
-            outString = outString.replaceAll("__AKA__", "");
+            outString = outString.replace("__AKA__", "");
         }
         if(sp.note != null) {
-            outString = outString.replaceAll("__NOTE__", "<span class=\"details\">" + "Note: " + processNote(sp.note) + "</span><br />");
+            outString = outString.replace("__NOTE__", "<span class=\"details\">" + "Note: " + processNote(sp.note) + "</span><br />");
         } else {
-            outString = outString.replaceAll("__NOTE__", "");
+            outString = outString.replace("__NOTE__", "");
         }
 
-        outString = outString.replaceAll("__INDEX__", "index" + group.index + ".html");
-        outString = outString.replaceAll("__BANNER__", header);
-        outString = outString.replaceAll("__BASE__", base);
-        if(analytics) {
-            outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
-        } else {
-            outString = outString.replaceAll("__ANALYTICS__", "");
-        }
+        outString = outString.replace("__INDEX__", "index" + group.index + ".html");
+        outString = outString.replace("__BANNER__", header);
+        outString = outString.replace("__BASE__", base);
+
 
         if(sp.size != null) {
             text.append("<span class=\"details\">Size: </span><span class=\"details2\">");
             text.append(sp.size);
             text.append("</span>&nbsp;&nbsp;");
         }
-        outString = outString.replaceAll("__SIZE__", text.toString());
+        outString = outString.replace("__SIZE__", text.toString());
         text = new StringBuilder();
         if(sp.depth != null) {
             text.append("<span class=\"details\">Depth: </span><span class=\"details2\">");
             text.append(sp.depth);
             text.append("</span>");
         }
-        outString = outString.replaceAll("__DEPTH__", text.toString());
+        outString = outString.replace("__DEPTH__", text.toString());
 
         for(var ph : sp.photo) {
             String thumbimg = sp.id + ph.id;
@@ -920,55 +964,62 @@ public class genReef35 {
         }
         text.append(afterText);
 
-        outString = outString.replaceAll("__SAMELIST__", text.toString());
-        outString = outString.replaceAll("__COPYRIGHT__", "<br />All Photographs<br />&copy; 2020 Florent Charpin");
-        outString = outString.replaceAll("__EXTREF__", "");
-
-        outString = outString.replaceAll("__FISH_HTML__", output.toString());
+        outString = outString.replace("__SAMELIST__", text.toString());
+        outString = outString.replace("__FISH_HTML__", output.toString());
 
         writeToFile(outString, baseIndex + "/" + sp.id + ".html");
     }
 
+    static String[] pixFile = new String[6];
     protected void genFishPixFile(Species sp, photo ph, String cat, String baseIndex, int reefRef, String banner) throws IOException {
         numPhotos++;
-        String outString = readFile("singlephoto.html");
-
-        outString = processSelectedGuideMenu(outString, reefRef);
+        String outString;
+        if(pixFile[reefRef] == null) {
+            pixFile[reefRef] = readFile("singlephoto.html");
+            pixFile[reefRef] = processSelectedGuideMenu(pixFile[reefRef], reefRef);
+            pixFile[reefRef] = pixFile[reefRef].replace("__REEFREF__", Integer.toString(reefRef));
+            pixFile[reefRef] = pixFile[reefRef].replace("__REEF__", reefName[reefRef]);
+            pixFile[reefRef] = pixFile[reefRef].replace("__PRENAME__", preReefName[reefRef]);
+            if(analytics) {
+                pixFile[reefRef] = pixFile[reefRef].replace("__ANALYTICS__", readFile("analytics.xml"));
+            } else {
+                pixFile[reefRef] = pixFile[reefRef].replace("__ANALYTICS__", "");
+            }
+        }
+        outString = pixFile[reefRef];
 
         String base = "";
         if(!baseIndex.equals(basepathIndexAll)) {
             base = "../";
         }
-        outString = outString.replaceAll("__REEFREF__", Integer.toString(reefRef));
-        outString = outString.replaceAll("__BANNER__", banner);
-        outString = outString.replaceAll("__BASE__", base);
-        outString = outString.replaceAll("__TITLE__", sp.name + " - " + sp.sciName + " - " + ph.location + " - Photo " + ph.id);
-        outString = outString.replaceAll("__REEF__", reefName[reefRef]);
-        outString = outString.replaceAll("__PRENAME__", preReefName[reefRef]);
+        outString = outString.replace("__BANNER__", banner);
+        outString = outString.replace("__BASE__", base);
+        outString = outString.replace("__TITLE__", sp.name + " - " + sp.sciName + " - " + ph.location + " - Photo " + ph.id);
+
 
         if(ph.type != null) {
-            outString = outString.replaceAll("__NAME__", sp.name + " - " + ph.type);
+            outString = outString.replace("__NAME__", sp.name + " - " + ph.type);
         } else {
-            outString = outString.replaceAll("__NAME__", sp.name);
+            outString = outString.replace("__NAME__", sp.name);
         }
-        outString = outString.replaceAll("__NAME2__", sp.name);
+        outString = outString.replace("__NAME2__", sp.name);
 
         if(!sp.sciName.equals("")) {
-            outString = outString.replaceAll("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName + "</span>");
+            outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName + "</span>");
         } else {
-            outString = outString.replaceAll("__SCINAME__", "");
+            outString = outString.replace("__SCINAME__", "");
         }
 
         var dist = String.join(", ", sp.dist) + (sp.endemic ? " (Endemic)" : "" );
-        outString = outString.replaceAll("__CAT__", cat);
-        //outString = outString.replaceAll("__MAINCAT__", node.cat);
-        outString = outString.replaceAll("__DIST1__", dist + " - " + sp.aka);
-        outString = outString.replaceAll("__DIST__", "<span class=\"details\">Distribution: </span><span class=\"details2\">" + dist + "</span>");
+        outString = outString.replace("__CAT__", cat);
+        //outString = outString.replace("__MAINCAT__", node.cat);
+        outString = outString.replace("__DIST1__", dist + " - " + sp.aka);
+        outString = outString.replace("__DIST__", "<span class=\"details\">Distribution: </span><span class=\"details2\">" + dist + "</span>");
 
         if(!sp.aka.equals("")) {
-            outString = outString.replaceAll("__AKA__", "<span class=\"details\">Also known as: </span><span class=\"details2\">" + sp.aka + "</span>");
+            outString = outString.replace("__AKA__", "<span class=\"details\">Also known as: </span><span class=\"details2\">" + sp.aka + "</span>");
         } else {
-            outString = outString.replaceAll("__AKA__", "");
+            outString = outString.replace("__AKA__", "");
         }
         StringBuilder text = new StringBuilder();
         if(sp.size != null) {
@@ -976,14 +1027,14 @@ public class genReef35 {
             text.append(sp.size);
             text.append("</span>&nbsp;&nbsp;");
         }
-        outString = outString.replaceAll("__SIZE__", text.toString());
+        outString = outString.replace("__SIZE__", text.toString());
         text = new StringBuilder();
         if(sp.depth != null) {
             text.append("<span class=\"details\">Depth: </span><span class=\"details2\">");
             text.append(sp.depth);
             text.append("</span>");
         }
-        outString = outString.replaceAll("__DEPTH__", text.toString());
+        outString = outString.replace("__DEPTH__", text.toString());
 
         StringBuilder thumblist_before = new StringBuilder();
         StringBuilder thumblist_after = new StringBuilder();
@@ -1009,7 +1060,7 @@ public class genReef35 {
             else
                 thumblist_after.append(thumblist);
         }
-        outString = outString.replaceAll("__THUMBS__", thumblist_after.append(thumblist_before).toString());
+        outString = outString.replace("__THUMBS__", thumblist_after.append(thumblist_before).toString());
 
 
         String thumbimg = sp.id + ph.id;
@@ -1027,15 +1078,11 @@ public class genReef35 {
         }
         output.append("</div><br />");
 
-        outString = outString.replaceAll("__FISH_HTML__", output.toString());
+        outString = outString.replace("__FISH_HTML__", output.toString());
 
-        outString = outString.replaceAll("__INDEX__", "../" + sp.id + ".html");
+        outString = outString.replace("__INDEX__", "../" + sp.id + ".html");
 
-        if(analytics) {
-            outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
-        } else {
-            outString = outString.replaceAll("__ANALYTICS__", "");
-        }
+
 
         writeToFile(outString, baseIndex + "/pixhtml/" + thumbimg + ".html");
 
@@ -1052,31 +1099,33 @@ public class genReef35 {
 
     }
 
+
     protected String processSelectedGuideMenu(String outString, int reefRef) {
+
         if(reefRef == 0)
-            outString = outString.replaceAll("__CHECK_ALL__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[0]);
+            outString = outString.replace("__CHECK_ALL__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[0]);
         else
-            outString = outString.replaceAll("__CHECK_ALL__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[0]);
+            outString = outString.replace("__CHECK_ALL__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[0]);
         if(reefRef == 1)
-            outString = outString.replaceAll("__CHECK_CAR__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[1]);
+            outString = outString.replace("__CHECK_CAR__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[1]);
         else
-            outString = outString.replaceAll("__CHECK_CAR__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[1]);
+            outString = outString.replace("__CHECK_CAR__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[1]);
         if(reefRef == 2)
-            outString = outString.replaceAll("__CHECK_PAC__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[2]);
+            outString = outString.replace("__CHECK_PAC__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[2]);
         else
-            outString = outString.replaceAll("__CHECK_PAC__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[2]);
+            outString = outString.replace("__CHECK_PAC__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[2]);
         if(reefRef == 3)
-            outString = outString.replaceAll("__CHECK_KEY__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[3]);
+            outString = outString.replace("__CHECK_KEY__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[3]);
         else
-            outString = outString.replaceAll("__CHECK_KEY__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[3]);
+            outString = outString.replace("__CHECK_KEY__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[3]);
         if(reefRef == 4)
-            outString = outString.replaceAll("__CHECK_HAW__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[4]);
+            outString = outString.replace("__CHECK_HAW__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[4]);
         else
-            outString = outString.replaceAll("__CHECK_HAW__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[4]);
+            outString = outString.replace("__CHECK_HAW__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[4]);
         if(reefRef == 5)
-            outString = outString.replaceAll("__CHECK_EPAC__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[5]);
+            outString = outString.replace("__CHECK_EPAC__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[5]);
         else
-            outString = outString.replaceAll("__CHECK_EPAC__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[5]);
+            outString = outString.replace("__CHECK_EPAC__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[5]);
 
         return outString;
 
@@ -1113,15 +1162,15 @@ public class genReef35 {
         outString = readFile("index0.html");
         outString = processSelectedGuideMenu(outString, reefRef);
 
-        outString = outString.replaceAll("__REEF__", reefName[reefRef]);
-        outString = outString.replaceAll("__PRENAME__", preReefString);
-        outString = outString.replaceAll("__BASE__", base);
-        outString = outString.replaceAll("__BANNER__", header);
+        outString = outString.replace("__REEF__", reefName[reefRef]);
+        outString = outString.replace("__PRENAME__", preReefString);
+        outString = outString.replace("__BASE__", base);
+        outString = outString.replace("__BANNER__", header);
 
         if(analytics) {
-            outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+            outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
         } else {
-            outString = outString.replaceAll("__ANALYTICS__", "");
+            outString = outString.replace("__ANALYTICS__", "");
         }
 
         StringBuilder html = new StringBuilder();
@@ -1160,8 +1209,7 @@ public class genReef35 {
             StringBuilder html_frag = new StringBuilder();
 
             List<Species> finalSp_list = sp_list;
-            int index = groupList.stream().filter(g -> g.species.contains(finalSp_list.get(0))).findAny().orElse(null).index;
-
+            int index = pageList.stream().filter(g -> g.species.contains(finalSp_list.get(0))).findAny().orElse(null).index;
 
             html_frag.append("<a href=\"").append("index").append(index).append(".html#").append(cat.replace(" ", "_")).append("\">\n");
             html_frag.append("<div class=\"famInfo\">\n");
@@ -1199,8 +1247,8 @@ public class genReef35 {
         finalList.forEach((h) -> html.append(finalMap.get(h)));
 
 
-        outString = outString.replaceAll("__INDEX_HTML__", html.toString());
-        outString = outString.replaceAll("__TITLE__", title);
+        outString = outString.replace("__INDEX_HTML__", html.toString());
+        outString = outString.replace("__TITLE__", title);
         String name = "index_" + type + ".html";
         writeToFile(outString, baseIndex + "/" + name);
 
@@ -1220,7 +1268,7 @@ public class genReef35 {
 
     protected void genIndexFile(
                                 String baseIndex,
-                                group g,
+                                page g,
                                 int reefRef,
                                 String header) throws IOException {
         String indexName = "";
@@ -1241,9 +1289,9 @@ public class genReef35 {
         outString = readFile("index_3.html");
 
         if(g.index == -1)
-            outString = outString.replaceAll("__HEADLINE__", "<div style=\"margin: auto; width: 100%; text-align: center;color: #dcd637;font-size:24pt;padding:10px;\">Latest Updates</div>");
+            outString = outString.replace("__HEADLINE__", "<div style=\"margin: auto; width: 100%; text-align: center;color: #dcd637;font-size:24pt;padding:10px;\">Latest Updates</div>");
         else
-            outString = outString.replaceAll("__HEADLINE__","");
+            outString = outString.replace("__HEADLINE__","");
 
         outString = processSelectedGuideMenu(outString, reefRef);
 
@@ -1261,7 +1309,7 @@ public class genReef35 {
         for(var sp : g.species) {
             int num = sp.getNameCount();
             for(int j = 0; j < num; j++) {
-                img_reef.append("\"").append(base).append("pix/thumb/").append(sp.id).append(species_collection.getSpecies(sp.id).thumbs().get(j)).append(".jpg\",");
+                img_reef.append("\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().get(j)).append(".jpg\",");
                 link_reef.append("\"").append(sp.id).append(".html\",");
                 //reef_name.append("\"").append(node.getName(j)).append(zxc).append("\",");
                 reef_name.append("\"").append(sp.getDispName(j)).append("\",");
@@ -1288,30 +1336,30 @@ public class genReef35 {
         if(ref_reef.toString().equals("0")) {
             ref_reef.append(",").append( g.species.size());
         }
-        outString = outString.replaceAll("__REEFREF__", Integer.toString(reefRef));
-        outString = outString.replaceAll("__IMG_REEF__", img_reef.toString());
-        outString = outString.replaceAll("__LINK_REEF__", link_reef.toString());
-        outString = outString.replaceAll("__NAME_REEF__", reef_name.toString());
-        outString = outString.replaceAll("__NAME_SCI__", sci_name.toString());
-        outString = outString.replaceAll("__CAT_REEF_", cat_reef.toString());
-        outString = outString.replaceAll("__REF_REEF__", ref_reef.toString());
-        outString = outString.replaceAll("__MAX_COL__", "0");
-        outString = outString.replaceAll("__PREVNAME__", "");
-        outString = outString.replaceAll("__NEXTNAME__", "");
-        outString = outString.replaceAll("__REEF__", reefName[reefRef]);
-        outString = outString.replaceAll("__PRENAME__", preReefString);
-        outString = outString.replaceAll("__BASE__", base);
-        outString = outString.replaceAll("__BANNER__", header);
+        outString = outString.replace("__REEFREF__", Integer.toString(reefRef));
+        outString = outString.replace("__IMG_REEF__", img_reef.toString());
+        outString = outString.replace("__LINK_REEF__", link_reef.toString());
+        outString = outString.replace("__NAME_REEF__", reef_name.toString());
+        outString = outString.replace("__NAME_SCI__", sci_name.toString());
+        outString = outString.replace("__CAT_REEF_", cat_reef.toString());
+        outString = outString.replace("__REF_REEF__", ref_reef.toString());
+        outString = outString.replace("__MAX_COL__", "0");
+        outString = outString.replace("__PREVNAME__", "");
+        outString = outString.replace("__NEXTNAME__", "");
+        outString = outString.replace("__REEF__", reefName[reefRef]);
+        outString = outString.replace("__PRENAME__", preReefString);
+        outString = outString.replace("__BASE__", base);
+        outString = outString.replace("__BANNER__", header);
         if(analytics) {
-            outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+            outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
         } else {
-            outString = outString.replaceAll("__ANALYTICS__", "");
+            outString = outString.replace("__ANALYTICS__", "");
         }
 
         int[] active = new int[1];
         active[0] = -1;
         String treeMenu = buildTreeMenu(indexName, active);
-        outString = outString.replaceAll("__TREEMENU__", treeMenu);
+        outString = outString.replace("__TREEMENU__", treeMenu);
 
         StringBuilder html = new StringBuilder();
         html.append("<tbody>");
@@ -1324,7 +1372,7 @@ public class genReef35 {
                     html.append("</tr></table>");
                 }
                 subdir = cat;
-                html.append("<tr><td><div class=\"catheader\"><a href=\"").append(subdir.replaceAll(" ", "_")).append(".html\">").append(subdir).append("</a></div></td></tr>\n");
+                html.append("<tr><td><div class=\"catheader\"><a href=\"").append(subdir.replace(" ", "_")).append(".html\">").append(subdir).append("</a></div></td></tr>\n");
                 html.append("<tr><td><table><tr>");
                 col = 0;
                 title.append(" - ").append(subdir);
@@ -1332,16 +1380,16 @@ public class genReef35 {
             if((col != 0) && ((col % 3) == 0)) {
                 html.append("</tr></table><table><tr>");
             }
-            html.append("<td><img src=\"").append(base).append("pix/thumb/").append(sp.id).append(species_collection.getSpecies(sp.id).thumbs().get(0)).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" title=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" />\n");
+            html.append("<td><img src=\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().get(0)).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" title=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" />\n");
             html.append("<br /><div class=\"nameid\"><a href=\"").append(sp.id).append(".html\">").append(sp.name).append("</a></div></td>");
             col++;
         }
         html.append("</tr></table></td></tr></tbody>\n");
 
-        outString = outString.replaceAll("__INDEX_HTML__", html.toString());
-        outString = outString.replaceAll("__TITLE__", title.toString());
+        outString = outString.replace("__INDEX_HTML__", html.toString());
+        outString = outString.replace("__TITLE__", title.toString());
 
-        outString = outString.replaceAll("__ACTIVE__", Integer.toString(active[0]));
+        outString = outString.replace("__ACTIVE__", Integer.toString(active[0]));
 
         writeToFile(outString, baseIndex + "/" + indexName);
     }
@@ -1366,7 +1414,7 @@ public class genReef35 {
         String outString = readFile("index_catalog.html");
 
         outString = processSelectedGuideMenu(outString, reefRef);
-        outString = outString.replaceAll("__BANNER__", header);
+        outString = outString.replace("__BANNER__", header);
 
         sp_list.forEach(sp -> {
             catName.put(sp.name, sp);
@@ -1402,25 +1450,25 @@ public class genReef35 {
             html.append("<a class=\"tocname\" href=\"").append(sp.id).append(".html\">").append(name).append("</a><br />");
             split--;
         }
-        outString = outString.replaceAll("__HTML__", html.toString());
-        outString = outString.replaceAll("__BASE__", base);
-        outString = outString.replaceAll("__REEF__", reefName[reefRef]);
-        outString = outString.replaceAll("__PRENAME__", preReefString);
-        outString = outString.replaceAll("__TITLE__", " - Index of Species by Common Names");
+        outString = outString.replace("__HTML__", html.toString());
+        outString = outString.replace("__BASE__", base);
+        outString = outString.replace("__REEF__", reefName[reefRef]);
+        outString = outString.replace("__PRENAME__", preReefString);
+        outString = outString.replace("__TITLE__", " - Index of Species by Common Names");
         if(analytics) {
-            outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+            outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
         } else {
-            outString = outString.replaceAll("__ANALYTICS__", "");
+            outString = outString.replace("__ANALYTICS__", "");
         }
 
-        outString = outString.replaceAll("__LINKS__", "By Common Name | <a class=\"catalog\" href=\"cat_grp.html\">By Category</a> | <a class=\"catalog\" href=\"cat_sci.html\">By Scientific Names</a>");
+        outString = outString.replace("__LINKS__", "By Common Name | <a class=\"catalog\" href=\"cat_grp.html\">By Category</a> | <a class=\"catalog\" href=\"cat_sci.html\">By Scientific Names</a>");
 
         writeToFile(outString, baseIndex + "/cat.html");
 
 
         outString = readFile("index_catalog.html");
         outString = processSelectedGuideMenu(outString, reefRef);
-        outString = outString.replaceAll("__BANNER__", header);
+        outString = outString.replace("__BANNER__", header);
         html = new StringBuilder();
         alpha = '.';
         String first = "";
@@ -1445,24 +1493,24 @@ public class genReef35 {
             }
             split--;
         }
-        outString = outString.replaceAll("__HTML__", html.toString());
-        outString = outString.replaceAll("__BASE__", base);
-        outString = outString.replaceAll("__REEF__", reefName[reefRef]);
-        outString = outString.replaceAll("__PRENAME__", preReefString);
-        outString = outString.replaceAll("__TITLE__", " - Index of Species by Scientific Names");
+        outString = outString.replace("__HTML__", html.toString());
+        outString = outString.replace("__BASE__", base);
+        outString = outString.replace("__REEF__", reefName[reefRef]);
+        outString = outString.replace("__PRENAME__", preReefString);
+        outString = outString.replace("__TITLE__", " - Index of Species by Scientific Names");
         if(analytics) {
-            outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+            outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
         } else {
-            outString = outString.replaceAll("__ANALYTICS__", "");
+            outString = outString.replace("__ANALYTICS__", "");
         }
-        outString = outString.replaceAll("__LINKS__", "<a class=\"catalog\" href=\"cat.html\">By Common Name</a> | <a class=\"catalog\" href=\"cat_grp.html\">By Category</a> | By Scientific Names");
+        outString = outString.replace("__LINKS__", "<a class=\"catalog\" href=\"cat.html\">By Common Name</a> | <a class=\"catalog\" href=\"cat_grp.html\">By Category</a> | By Scientific Names");
 
         writeToFile(outString, baseIndex + "/cat_sci.html");
 
 
         outString = readFile("index_catalog.html");
         outString = processSelectedGuideMenu(outString, reefRef);
-        outString = outString.replaceAll("__BANNER__", header);
+        outString = outString.replace("__BANNER__", header);
         html = new StringBuilder();
         String curgrp = "";
         split = species_collection.getAllSpecies().size() / 3;
@@ -1482,18 +1530,18 @@ public class genReef35 {
             }
 
         }
-        outString = outString.replaceAll("__HTML__", html.toString());
-        outString = outString.replaceAll("__REEF__", reefName[reefRef]);
-        outString = outString.replaceAll("__PRENAME__", preReefString);
-        outString = outString.replaceAll("__BASE__", base);
-        outString = outString.replaceAll("__TITLE__", " - Index of Species by Categories");
+        outString = outString.replace("__HTML__", html.toString());
+        outString = outString.replace("__REEF__", reefName[reefRef]);
+        outString = outString.replace("__PRENAME__", preReefString);
+        outString = outString.replace("__BASE__", base);
+        outString = outString.replace("__TITLE__", " - Index of Species by Categories");
         if(analytics) {
-            outString = outString.replaceAll("__ANALYTICS__", readFile("analytics.xml"));
+            outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
         } else {
-            outString = outString.replaceAll("__ANALYTICS__", "");
+            outString = outString.replace("__ANALYTICS__", "");
         }
 
-        outString = outString.replaceAll("__LINKS__", "<a class=\"catalog\" href=\"cat.html\">By Common Name</a> |By Category | <a class=\"catalog\" href=\"cat_sci.html\">By Scientific Names</a>");
+        outString = outString.replace("__LINKS__", "<a class=\"catalog\" href=\"cat.html\">By Common Name</a> |By Category | <a class=\"catalog\" href=\"cat_sci.html\">By Scientific Names</a>");
 
         writeToFile(outString, baseIndex + "/cat_grp.html");
 
@@ -1526,7 +1574,7 @@ public class genReef35 {
         int ul_fam_open = 0;
         int active_count = -1;
 
-        for(group elem : groupList) {
+        for(page elem : pageList) {
             if(elem.species.size() == 0)
                 continue;
             if(elem.page == 1) {
@@ -1575,6 +1623,9 @@ public class genReef35 {
             }
             for(Species sp : elem.species) {
                 var cat = species_collection.getCat(sp.id());
+                cat = elem.group.get(cat);
+                if(prev == null)
+                    continue;
                 if(!prev.equals(cat)) {
                     prev = cat;
                     if(active)
@@ -1592,7 +1643,7 @@ public class genReef35 {
         str.append("</li>");
         str.append("</ul></div>\n");
 
-        String ret = str.toString().replaceAll("_ULFAMOPEN_" + ul_fam_open + "_", "<ul class=\"menusecopen\">");
+        String ret = str.toString().replace("_ULFAMOPEN_" + ul_fam_open + "_", "<ul class=\"menusecopen\">");
         ret = ret.replaceAll("_ULFAMOPEN_.*_", "<ul>");
 
         return ret;
