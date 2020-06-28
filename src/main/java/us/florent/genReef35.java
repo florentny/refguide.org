@@ -241,10 +241,13 @@ public class genReef35 {
             return "Sweetlips";
         if(reefRef == 2 && cat.equals("Combtooth Blennies"))
             return "Blennies";
+        if(cat.equals("Sponges"))
+            return "Common Sponges";
         return cat;
     }
 
     static private String  replaceCat(String cat, int reefRef) {
+
         if(reefRef == 0) {
             return cat.replace("Grunts", "Grunts/Sweetlips");
         }
