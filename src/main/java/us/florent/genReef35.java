@@ -1,7 +1,5 @@
 package us.florent;
 
-import com.mongodb.client.*;
-
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
@@ -10,7 +8,17 @@ import java.io.StringWriter;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -18,6 +26,11 @@ import javax.json.Json;
 import javax.json.stream.JsonGenerator;
 
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
@@ -25,8 +38,8 @@ import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 public class genReef35 {
 
-    private genusClassifaction genus_classification;
-    private speciesCollection species_collection;
+    protected genusClassifaction genus_classification;
+    protected speciesCollection species_collection;
 
     static private MongoDatabase db = null;
 
@@ -321,6 +334,7 @@ public class genReef35 {
             outString = outString.replace("__INDOPAC__", Integer.toString(indopac));
             outString = outString.replace("__KEYS__", Integer.toString(keys));
             outString = outString.replace("__HAWAII__", Integer.toString(hawaii));
+            outString = outString.replace("__BAJA__", Integer.toString(hawaii));
 
             if(analytics) {
                 outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
@@ -493,7 +507,7 @@ public class genReef35 {
         }
     }
 
-    private boolean checkRegion(int reefRef, List<String> dist) {
+    protected boolean checkRegion(int reefRef, List<String> dist) {
         if(reefRef == 0)
             return true;
         String comp = String.join("", dist);
@@ -1255,7 +1269,7 @@ public class genReef35 {
 
     }
 
-    private void writeToFile(String outString, String filename) throws IOException {
+    protected void writeToFile(String outString, String filename) throws IOException {
         boolean sameFile = compareToFile(outString, filename);
         if(!sameFile) {
             try(java.io.BufferedWriter outFile = new java.io.BufferedWriter(new java.io.FileWriter(filename))) {
@@ -1721,7 +1735,7 @@ public class genReef35 {
     }
 
 
-    private String getUnknowSpecies(String config) throws IOException {
+    protected String getUnknowSpecies(String config) throws IOException {
         StringBuilder str = new StringBuilder();
 
         java.io.BufferedReader file = new java.io.BufferedReader(new java.io.FileReader(config));
