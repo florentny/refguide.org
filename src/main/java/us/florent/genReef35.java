@@ -126,6 +126,10 @@ public class genReef35 {
         }
 
         String getFamilyForGenus(String genus) {
+            var r = genusFam.get(genus);
+            if(r == null) {
+                System.out.println("MISSING GENUS: " + genus);
+            }
             return genusFam.get(genus).fullFamily();
         }
 
