@@ -11,7 +11,9 @@ import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -107,7 +109,8 @@ public class speciesEdit extends javax.swing.JFrame {
         node = null;
         locations =  db.species_collection.getAllSpecies().stream().flatMap(s -> s.photo().stream()).map(p -> p.location()).sorted().distinct().collect(Collectors.toList());
         types =  db.species_collection.getAllSpecies().stream().flatMap(s -> s.photo().stream()).filter(p -> p.type() != null).map(p -> p.type()).sorted().distinct().collect(Collectors.toList());
-
+        locations.add(0, "");
+        types.add(0, "");
     }
 
     private void fillValues() {
@@ -621,7 +624,22 @@ public class speciesEdit extends javax.swing.JFrame {
         doc.put("photos", listDoc);
         if(!noteTextField.getText().isBlank())
             doc.put("note", noteTextField.getText().trim());
-        doc.put("update", new Date());
+
+        var rec = db.getMongoDB().getCollection("species").find(new Document("id", IDTextField.getText().trim())).first();
+        if(rec != null && rec.getDate("update") != null) {
+            Calendar cal = new GregorianCalendar();
+            cal.add(Calendar.DAY_OF_MONTH, -30);
+            if(rec.getDate("update").before(cal.getTime())) {
+                System.out.println("Last saved: " + rec.getDate("update"));
+                doc.put("update", new Date());
+            } else {
+                System.out.println("Saved less than 30 days ago");
+                doc.put("update", rec.getDate("update"));
+            }
+        } else {
+            System.out.println("No update tag");
+            doc.put("update", new Date());
+        }
 
         db.getMongoDB().getCollection("species").replaceOne(new Document("id", IDTextField.getText().trim()),
                 doc, new ReplaceOptions().upsert(true));
@@ -636,13 +654,13 @@ public class speciesEdit extends javax.swing.JFrame {
 //            System.out.println(doc.toJson());
 //        }
 
-        node = new genReef35.Species(IDTextField.getText().trim(),NameTextField.getText().trim(),sciTextField.getText().trim(),sizeTextField.getText().trim()
-                ,depth1TextField.getText().trim() + "-" + depth2TextField.getText().trim(),node.endemic(),null, null,null,asnTextField.getText().trim()
-                ,akaTextField.getText().trim(),noteTextField.getText().trim(),null,null);
+//        node = new genReef35.Species(IDTextField.getText().trim(),NameTextField.getText().trim(),sciTextField.getText().trim(),sizeTextField.getText().trim()
+//                ,depth1TextField.getText().trim() + "-" + depth2TextField.getText().trim(),node.endemic(),null, null,null,asnTextField.getText().trim()
+//                ,akaTextField.getText().trim(),noteTextField.getText().trim(),null,null);
 
 
         try {
-            String id = node.id();
+            String id = IDTextField.getText().trim();
             initDB();
             node = getNode(id);
         } catch(IOException ex) {
@@ -832,11 +850,13 @@ public class speciesEdit extends javax.swing.JFrame {
             initialValues = node.dist().toArray(String[]::new);
         }
         var ret = distDialog.showDialog(rootPane, rootPane, null, null, possibleValues, new ArrayList<>(Arrays.asList(initialValues)));
-        if(ret == null || node == null)
+        if(ret == null)
             return;
         distTextField.setText(ret.stream().collect(Collectors.joining(",")));
-        node.dist().removeAll(node.dist());
-        node.dist().addAll(ret);
+        if(node != null) {
+            node.dist().removeAll(node.dist());
+            node.dist().addAll(ret);
+        }
     }
 
     private void jMenuNewActionPerformed(java.awt.event.ActionEvent evt) {
