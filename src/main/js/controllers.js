@@ -17,7 +17,7 @@ function ListController($scope, $http) {
         {id: 2, name: 'Indo-Pacific', path: "indopac/", code: "indopac"},
         {id: 3, name: 'Florida Keys', path: "keys/", code: "florida"},
         {id: 4, name: 'Hawaii', path: "hawaii/", code: "hawaii"},
-        {id: 5, name: 'Baja California', path: "baja/", code: "baja"}
+        {id: 5, name: 'Easter Pacific', path: "baja/", code: "baja"}
     ];
     
     var region = GetUrlValue('area');//$location.search()['area'];
@@ -29,15 +29,15 @@ function ListController($scope, $http) {
     
     $scope.selRegion = $scope.regions[region]; 
     
-    $scope.busyIndicator = false;
-    $http.get('php/reefspeciescat.php?region='+$scope.selRegion.id).success(function(data) {  
+    $scope.busyIndicator = true;
+    $http.get('/species_region_' + $scope.selRegion.id + '.json').success(function(data) {
         $scope.speciesList = data;
         $scope.busyIndicator = false;
     });
     
     $scope.regionChanged = function() {
         $scope.busyIndicator = true;
-        $http.get('php/reefspeciescat.php?region='+$scope.selRegion.id).success(function(data) {
+        $http.get('/species_region_' + $scope.selRegion.id + '.json').success(function(data) {
             $scope.speciesList = data;
             $scope.busyIndicator = false;
         });
