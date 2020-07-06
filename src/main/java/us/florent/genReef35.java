@@ -33,9 +33,6 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 
-import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
-import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
-
 public class genReef35 {
 
     protected genusClassifaction genus_classification;
@@ -104,10 +101,6 @@ public class genReef35 {
             else
                 id = fam + "/" + subFam;
             famCat.put(id, new Category(id, cat, altType, altCat));
-        }
-
-        Category getCategory(String id) {
-            return famCat.get(id);
         }
 
         List<String> getFamily(String cat) {
@@ -593,9 +586,6 @@ public class genReef35 {
             genCatalogFiles(species_collection.getAllSpecies(), baseIndex, reefRef, headers[0]);
             for(var g : pageList) {
                 genIndexFile(baseIndex, g, reefRef, headers[headercount]);
-                if(++headercount == headers.length) {
-                    headercount = 0;
-                }
                 headercount = 0;
                 for(Species sp : g.species) {
                     genFishFile(sp, baseIndex, reefRef, headers[headercount], g);
@@ -612,7 +602,6 @@ public class genReef35 {
 
             }
 
-            String latestline;
             String date;
             var latest_list = species_collection.getLatest();
             var latestGroup = new page();
