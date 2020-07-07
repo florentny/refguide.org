@@ -331,7 +331,7 @@ public class genReef35 {
             outString = outString.replace("__INDOPAC__", Integer.toString(indopac));
             outString = outString.replace("__KEYS__", Integer.toString(keys));
             outString = outString.replace("__HAWAII__", Integer.toString(hawaii));
-            outString = outString.replace("__BAJA__", Integer.toString(hawaii));
+            outString = outString.replace("__BAJA__", Integer.toString(baja));
 
             if(analytics) {
                 outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
