@@ -796,9 +796,7 @@ public class genReef35 {
         }
 
 
-        StringBuilder html = new StringBuilder();
-
-        outString = outString.replace("__INDEX_HTML__", html.toString());
+        outString = outString.replace("__INDEX_HTML__", "");
         outString = outString.replace("__TITLE__", " - " + subdir + " - Show all");
 
         writeToFile(outString, baseIndex + "/" + cat.replace(' ', '_') + ".html");
