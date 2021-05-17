@@ -22,10 +22,9 @@ import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
-import javax.json.Json;
-import javax.json.stream.JsonGenerator;
 
-
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -649,23 +648,23 @@ public class genReef35 {
         if(baseIndex.contains("clean")) {
             return;
         }
-        //String area = reefId[region];
-
-       // db.getCollection("species_by_regions").deleteMany(new Document("region", area));
-      //  MongoCollection<Document> c = db.getCollection("species_by_regions");
         StringWriter writer = new StringWriter();
-        try(JsonGenerator gen = Json.createGenerator(writer)) {
-            gen.writeStartArray();
-            for(var sp : species_collection.getAllSpecies()) {
-               // c.insertOne(new Document("region", area).append("name", elem.name).append("cat", elem.cat).append("subCat", subcat));
-                gen.writeStartObject();
-                gen.write("name", sp.id).write("fullname", sp.name).write("sname", sp.sciName).write("subcategory", species_collection.getCat(sp.id))
-                        .write("category", genus_classification.getFamilyForGenus(sp.genus())).write("size", getSpNull(sp.size)).write("depth", getSpNull(sp.depth)).write("thumb1", sp.thumbs.get(0));
-                gen.writeEnd();
-            }
-            gen.writeEnd();
-            gen.flush();
+        JsonGenerator jsonGenerator = new JsonFactory().createGenerator(writer);
+        jsonGenerator.writeStartArray();
+        for(var sp : species_collection.getAllSpecies()) {
+            jsonGenerator.writeStartObject();
+            jsonGenerator.writeStringField("name", sp.id);
+            jsonGenerator.writeStringField("fullname", sp.name);
+            jsonGenerator.writeStringField("sname", sp.sciName);
+            jsonGenerator.writeStringField("subcategory", species_collection.getCat(sp.id));
+            jsonGenerator.writeStringField("category", genus_classification.getFamilyForGenus(sp.genus()));
+            jsonGenerator.writeStringField("size", getSpNull(sp.size));
+            jsonGenerator.writeStringField("depth", getSpNull(sp.depth));
+            jsonGenerator.writeNumberField("thumb1", sp.thumbs.get(0));
+            jsonGenerator.writeEndObject();
         }
+        jsonGenerator.writeEndArray();
+        jsonGenerator.flush();
         writer.flush();
         String json = writer.toString();
 
