@@ -161,7 +161,7 @@ public class genReef35 {
             return dispNames.size();
         }
 
-        protected String getDispName(int i) {
+        String getDispName(int i) {
             if(dispNames == null)
                 return name;
             return dispNames.get(i);
@@ -192,7 +192,7 @@ public class genReef35 {
                 p.add(x);
                 ph.remove(x);
             });
-            p.addAll(ph.stream().sorted(Comparator.comparingInt(photo::id).reversed()).collect(Collectors.toList()));
+            p.addAll(ph.stream().sorted(Comparator.comparingInt(photo::id).reversed()).toList());
             return p;
         }
 
@@ -224,7 +224,7 @@ public class genReef35 {
 
         List<String> getSpeciesNameFromCat(String category) {
             return genus_classification.getFamily(category).stream().
-                    flatMap(s -> genus_classification.getGenus(s).stream()).collect(Collectors.toList())
+                    flatMap(s -> genus_classification.getGenus(s).stream()).toList()
                     .stream().flatMap(s -> species_collection.getSpeciesFromGenus(s).stream()).collect(Collectors.toList());
         }
 
@@ -1707,7 +1707,7 @@ public class genReef35 {
 
     static String configpath = "/home/fc/web/reef4";
 
-    public static void main(String[] args) {
+    public static void main(String... args) {
 
         genReef35 reef = new genReef35();
         reef.basepathIndexAll = "/home/fc/web/reef4";
