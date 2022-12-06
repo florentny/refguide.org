@@ -6,10 +6,11 @@ import java.util.logging.Level;
 
 public class genReef4 extends genReef35{
 
-    static String configpath = "/data3/newreef";
+    //static String configpath = "/data3/newreef";
 
     public static void main(String[] args) {
         genReef4 reef = new genReef4();
+        configpath = "/data3/newreef";
         reef.basepathIndexAll = "/data3/newreef";
         if(args.length == 1) {
             reef.basepathIndexAll = args[0];

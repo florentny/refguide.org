@@ -327,6 +327,7 @@ public class speciesEdit extends javax.swing.JFrame {
         jTextField16.setEditable(false);
 
         jTable1.setModel(new CustomTableModel());
+        ((DefaultTableModel) jTable1.getModel()).setRowCount(50);
         jTable1.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_LAST_COLUMN);
         jTable1.setColumnSelectionAllowed(true);
         jTable1.getTableHeader().setReorderingAllowed(false);
