@@ -16,10 +16,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
@@ -31,6 +33,8 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class genReef35 {
 
@@ -236,6 +240,19 @@ public class genReef35 {
             return species.values().stream().filter(s -> s.update != null).sorted(Comparator.comparing(Species::update, Comparator.reverseOrder())).collect(Collectors.toList());
         }
 
+        void validate() {
+            species.values().stream().map(Species::sciName).collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                    .forEach((k,v) -> {
+                        if(k.isEmpty())
+                            return;
+                        if(v > 1L) {
+                            System.out.println(k + " - " + v);
+                            throw new RuntimeException("DUPLICATE SCINAME");
+                        }
+                    });
+
+        }
+
     }
 
     String basepathIndexAll = null;
@@ -244,9 +261,11 @@ public class genReef35 {
     protected java.util.ArrayList<page> pageList = new java.util.ArrayList<>();
 
     //final String[] reefId = {"all", "carib", "indopac", "hawaii", "keys", "baja"};
-    final String[] reefName = {"Tropical Reefs", "Caribbean Reefs", "Tropical Pacific Reefs", "South Florida Reefs", "Hawaii Reefs", "Eastern Pacific Reefs"};
-    final String[] preReefName = {"", "Florida, Bahamas &", "", "", "", ""};
-    final String[] reefMenu = {"Worldwide", "Caribbean", "Pacific", "South Florida", "Hawaii", "Eastern Pacific"};
+    final String[] reefName = {"Tropical Reefs", "Caribbean Reefs", "Tropical Pacific Reefs", "South Florida Reefs", "Hawaii Reefs", "Eastern Pacific Reefs", "French Polynesia"};
+    final String[] preReefName = {"", "Florida, Bahamas &", "", "", "", "", ""};
+    final String[] reefMenu = {"Worldwide", "Caribbean", "Pacific", "South Florida", "Hawaii", "Eastern Pacific", "French Polynesia"};
+
+    static final int numRegion = 7;
 
    // int __count = 0;
 
@@ -287,11 +306,13 @@ public class genReef35 {
             String basepathIndexCarib = path + "/carib";
             String basepathIndexKeys = path + "/keys";
             String basepathIndexBaja = path + "/baja";
+            String basepathIndexPolynesia = path + "/fp";
             String[] hearderAll = {"banner1", "banner2", "banner3"};
             String[] hearderCarib = {"banner1", "banner3"};
             String[] hearderIndopac = {"banner2"};
             String[] hearderKeys = {"banner1", "banner3"};
             String[] hearderHawaii = {"banner2"};
+            String[] hearderPolynesia = {"banner2"};
 
             this.analytics = analytics;
             System.out.println("================= Site " + path + " =================");
@@ -313,6 +334,9 @@ public class genReef35 {
             System.out.println("Processing Baja:");
             int baja = process("/config/reeflistbaja4.xml", basepathIndexBaja, 5, hearderHawaii);
             int baja_pics = numPhotos;
+            System.out.println("Processing Polynesia:");
+            int poly = process("/config/reeflisthawaii4.xml", basepathIndexPolynesia, 6, hearderPolynesia);
+            int poly_pics = numPhotos;
 
             String outString = readFile("about.html");
             outString = outString.replace("__ALL__", Integer.toString(all));
@@ -405,7 +429,12 @@ public class genReef35 {
 //                    .codecRegistry(pojoCodecRegistry)
 //                    .build();
             //MongoClient mongoClient = MongoClients.create(settings);
+
+            //Logger mongoLogger = LoggerFactory.getLogger( "org.mongodb.driver" );
+            //mongoLogger.setLevel(Level.OFF);
+
             MongoClient mongoClient = MongoClients.create();
+
             db = mongoClient.getDatabase("reef4");
         }
         return db;
@@ -505,6 +534,7 @@ public class genReef35 {
                 }
             }
         }
+        species_collection.validate();
 
         collection = db.getCollection("groups");
         try(MongoCursor<Document> cur = collection.find().iterator()) {
@@ -542,6 +572,10 @@ public class genReef35 {
         }
         if(reefRef == 5) {
             return comp.contains("California") || comp.contains("Baja") || comp.contains("Pacific Coast")
+                    || comp.contains("Circum") || comp.toLowerCase().contains("world");
+        }
+        if(reefRef == 6) {
+            return comp.contains("Polynesia")
                     || comp.contains("Circum") || comp.toLowerCase().contains("world");
         }
         return false;
@@ -803,7 +837,7 @@ public class genReef35 {
 
     }
 
-    static String[] fishFile = new String[6];
+    static String[] fishFile = new String[numRegion];
     protected void genFishFile(Species sp, String baseIndex, int reefRef, String header, page group) throws IOException {
 
         if(fishFile[reefRef] == null) {
@@ -992,7 +1026,7 @@ public class genReef35 {
         writeToFile(outString, baseIndex + "/" + sp.id + ".html");
     }
 
-    static String[] pixFile = new String[6];
+    static String[] pixFile = new String[numRegion];
     protected void genFishPixFile(Species sp, photo ph, String cat, String baseIndex, int reefRef, String banner) throws IOException {
         numPhotos++;
         String outString;
@@ -1094,7 +1128,11 @@ public class genReef35 {
             output.append(ph.comment);
             div = " / ";
         }
-        if(!ph.location.isBlank()) {
+        if(ph.location == null) {
+            System.out.println("Null Location for " + sp.id);
+            System.out.flush();
+        }
+        if(!Objects.requireNonNull(ph.location).isBlank()) {
             output.append(div).append("Location: ").append(ph.location);
         }
         output.append("</div><br />");
@@ -1708,6 +1746,7 @@ public class genReef35 {
     static String configpath = "/home/fc/web/reef4";
 
     public static void main(String... args) {
+
 
         genReef35 reef = new genReef35();
         reef.basepathIndexAll = "/home/fc/web/reef4";
