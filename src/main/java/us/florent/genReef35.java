@@ -351,6 +351,7 @@ public class genReef35 {
             outString = outString.replace("__HAWAIIPIC__", Integer.toString(hawaii_pics));
             outString = outString.replace("__BAJA__", Integer.toString(baja));
             outString = outString.replace("__BAJAPIC__", Integer.toString(baja_pics));
+            outString = outString.replace("__FPPIC__", Integer.toString(poly_pics));
 
             if(analytics) {
                 outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
@@ -367,6 +368,7 @@ public class genReef35 {
             outString = outString.replace("__KEYS__", Integer.toString(keys));
             outString = outString.replace("__HAWAII__", Integer.toString(hawaii));
             outString = outString.replace("__BAJA__", Integer.toString(baja));
+            outString = outString.replace("__FP__", Integer.toString(poly));
 
             if(analytics) {
                 outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
@@ -436,6 +438,7 @@ public class genReef35 {
             MongoClient mongoClient = MongoClients.create();
 
             db = mongoClient.getDatabase("reef4");
+
         }
         return db;
     }
@@ -1185,6 +1188,10 @@ public class genReef35 {
             outString = outString.replace("__CHECK_EPAC__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[5]);
         else
             outString = outString.replace("__CHECK_EPAC__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[5]);
+        if(reefRef == 6)
+            outString = outString.replace("__CHECK_FP__", "<div class=\"ui-icon ui-icon-check arrow\"></div>" + reefMenu[6]);
+        else
+            outString = outString.replace("__CHECK_FP__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[6]);
 
         return outString;
 

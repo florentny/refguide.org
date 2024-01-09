@@ -17,7 +17,8 @@ function ListController($scope, $http) {
         {id: 2, name: 'Indo-Pacific', path: "indopac/", code: "indopac"},
         {id: 3, name: 'Florida Keys', path: "keys/", code: "florida"},
         {id: 4, name: 'Hawaii', path: "hawaii/", code: "hawaii"},
-        {id: 5, name: 'Easter Pacific', path: "baja/", code: "baja"}
+        {id: 5, name: 'Easter Pacific', path: "baja/", code: "baja"},
+        {id: 6, name: 'French Polynesia', path: "fp/", code: "fp"}
     ];
     
     var region = GetUrlValue('area');//$location.search()['area'];
