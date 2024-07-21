@@ -33,8 +33,6 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class genReef35 {
 
@@ -68,7 +66,7 @@ public class genReef35 {
     record Category(String id, String cat, String altType, String altCat) {
     }
 
-    record photo(int id, String location, String type, String comment) {}
+    protected record photo(int id, String location, String type, String comment) {}
 
     protected static class genusClassifaction {
 
@@ -148,7 +146,7 @@ public class genReef35 {
         }
     }
 
-    record Species(String id, String name, String sciName, String size, String depth, boolean endemic, List<String> dist,
+    protected record Species(String id, String name, String sciName, String size, String depth, boolean endemic, List<String> dist,
                    List<photo> photo, List<Integer> thumbs, String synonyms, String aka, String note, List<String> dispNames,
                    Date update) {
         String genus() {
@@ -172,7 +170,7 @@ public class genReef35 {
         }
     }
 
-    class speciesCollection {
+    protected class speciesCollection {
         private final Map<String, Species> species = new HashMap<>();
 
         void add(String id, String name, String sciName,String size, String depth, boolean endemic, List<String> dist, List<Document> photos,
@@ -468,9 +466,9 @@ public class genReef35 {
                     pageList.add(_page);
                 } else if(masterline.startsWith("<page")) {
                     _page = new page();
-                    _page.name = pageList.get(pageList.size() - 1).name;
+                    _page.name = pageList.getLast().name;
                     _page.index = Integer.parseInt(getIndex(masterline));
-                    _page.page = pageList.get(pageList.size() - 1).page + 1;
+                    _page.page = pageList.getLast().page + 1;
                     pageList.add(_page);
                 } else if(_page != null) {
                     var group = genus_classification.getGroup(masterline);
@@ -554,13 +552,13 @@ public class genReef35 {
         String comp = String.join("", dist);
         if(reefRef == 1) {
             if(comp.contains("Carib") || comp.contains("Bahamas") || comp.contains("Florida") || comp.contains("Cozumel")  || comp.contains("Cayman")
-                     || comp.contains("Belize") || comp.contains("Circum") || comp.toLowerCase().contains("world"))
+                     || comp.contains("Belize") || comp.contains("Bonaire") || comp.contains("Circum") || comp.toLowerCase().contains("world"))
                 return true;
         }
         if(reefRef == 2) {
             if(comp.contains("Palau") || comp.contains("Indo") || comp.contains("Hawaii") || comp.contains("Australia") || comp.contains("Polynesia")  || comp.contains("Asia")
                     || comp.contains("Great Barrier") || comp.contains("Micronesia") || comp.contains("Philippines") || comp.contains("Fiji") || comp.contains("Circum") || comp.toLowerCase().contains("world")
-                    || comp.contains("West Pacific")  || comp.contains("Central Pacific") )
+                    || comp.contains("West Pacific")  || comp.contains("Central Pacific") || comp.contains("Bali") )
                 return true;
         }
         if(reefRef == 3) {
@@ -697,7 +695,7 @@ public class genReef35 {
             jsonGenerator.writeStringField("category", genus_classification.getFamilyForGenus(sp.genus()));
             jsonGenerator.writeStringField("size", getSpNull(sp.size));
             jsonGenerator.writeStringField("depth", getSpNull(sp.depth));
-            jsonGenerator.writeNumberField("thumb1", sp.thumbs.get(0));
+            jsonGenerator.writeNumberField("thumb1", sp.thumbs.getFirst());
             jsonGenerator.writeEndObject();
         }
         jsonGenerator.writeEndArray();
@@ -733,7 +731,7 @@ public class genReef35 {
         sp_list.forEach(sp -> {
             outString.append("<item><title>");
             outString.append(sp.name).append("</title><link>http://reefguide.org/").append(sp.id).append(".html</link>");
-            outString.append("<description>&lt;img src=\"http://reefguide.org/pix/thumb3/").append(sp.id).append(sp.thumbs.get(0)).append(".jpg\" /&gt;&lt;br /&gt;");
+            outString.append("<description>&lt;img src=\"http://reefguide.org/pix/thumb3/").append(sp.id).append(sp.thumbs.getFirst()).append(".jpg\" /&gt;&lt;br /&gt;");
             outString.append(sp.name).append(" (").append(sp.sciName).append(")&lt;br /&gt;");
             outString.append("Category: ").append(species_collection.getCat(sp.id).replace("&", "&amp;")).append("&lt;br /&gt;");
             outString.append("Size: ").append(sp.size).append("&lt;br /&gt;");
@@ -767,7 +765,7 @@ public class genReef35 {
         StringBuilder ref_reef = new StringBuilder();
         StringBuilder link_reef = new StringBuilder();
         String preName = "";
-        if(preReefName[reefRef].length() > 0) {
+        if(!preReefName[reefRef].isEmpty()) {
             preName = "<span class=\"pretitle\">" + preReefName[reefRef] + "</span>";
         }
         String next = "";
@@ -864,7 +862,7 @@ public class genReef35 {
             base = "../";
         }
         String prename = "";
-        if(preReefName[reefRef].length() > 0) {
+        if(!preReefName[reefRef].isEmpty()) {
             prename = "<span class=\"pretitle\">" + preReefName[reefRef] + "</span>";
         }
 
@@ -873,12 +871,12 @@ public class genReef35 {
         outString = outString.replace("__GROUP__", group.name);
 
         outString = outString.replace("__NAME2__", sp.name);
-        if((sp.photo.size() == 1) && (sp.photo.get(0).type != null)) {
-            outString = outString.replace("__NAME__", sp.name + " - " + sp.photo.get(0).type);
+        if((sp.photo.size() == 1) && (sp.photo.getFirst().type != null)) {
+            outString = outString.replace("__NAME__", sp.name + " - " + sp.photo.getFirst().type);
         } else {
             outString = outString.replace("__NAME__", sp.name);
         }
-        if(!sp.sciName().equals("")) {
+        if(!sp.sciName().isEmpty()) {
             outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName()+ "</span>");
         } else {
             outString = outString.replace("__SCINAME__", "");
@@ -904,7 +902,7 @@ public class genReef35 {
 
         outString = outString.replace("__TITLE__", sp.name + " - " + sp.sciName + " - " + cat + " - " + sp.aka);
 
-        if(!f.equals("")) {
+        if(!f.isEmpty()) {
             outString = outString.replace("__FAM__", "<span class=\"details\">" + "Family" + ": </span><span class=\"sntitle\">" + f + "</span>");
             if(!altCat.isBlank()) {
                 outString = outString.replace("__HIGHER__", "<span class=\"details\">" + catType + ": </span><span class=\"sntitle\">" + altCat + "</span>");
@@ -931,7 +929,7 @@ public class genReef35 {
         outString = outString.replace("__DIST__", "<span class=\"details\">Distribution: </span><span class=\"details2\">" + String.join(", ", sp.dist)
                     + (sp.endemic ? " (Endemic)" : "" ) + "</span>");
 
-        if(!sp.aka.equals("")) {
+        if(!sp.aka.isEmpty()) {
             outString = outString.replace("__AKA__", "<span class=\"details\">Also known as: </span><span class=\"details2\">" + sp.aka + "</span>");
         } else {
             outString = outString.replace("__AKA__", "");
@@ -1063,7 +1061,7 @@ public class genReef35 {
         }
         outString = outString.replace("__NAME2__", sp.name);
 
-        if(!sp.sciName.equals("")) {
+        if(!sp.sciName.isEmpty()) {
             outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName + "</span>");
         } else {
             outString = outString.replace("__SCINAME__", "");
@@ -1075,7 +1073,7 @@ public class genReef35 {
         outString = outString.replace("__DIST1__", dist + " - " + sp.aka);
         outString = outString.replace("__DIST__", "<span class=\"details\">Distribution: </span><span class=\"details2\">" + dist + "</span>");
 
-        if(!sp.aka.equals("")) {
+        if(!sp.aka.isEmpty()) {
             outString = outString.replace("__AKA__", "<span class=\"details\">Also known as: </span><span class=\"details2\">" + sp.aka + "</span>");
         } else {
             outString = outString.replace("__AKA__", "");
@@ -1212,7 +1210,7 @@ public class genReef35 {
 
 
         String preReefString = "";
-        if(preReefName[reefRef].length() > 0) {
+        if(!preReefName[reefRef].isEmpty()) {
             preReefString = "<span class=\"pretitle\">" + preReefName[reefRef] + "</span>";
         }
         String base = "";
@@ -1269,13 +1267,13 @@ public class genReef35 {
                 sp_list = species_collection.getSpeciesFromCat(cat);
                 if(sp_list.isEmpty())
                     continue;
-                String genus = sp_list.get(0).genus();
+                String genus = sp_list.getFirst().genus();
                 fam = genus_classification.getFamilySplitForGenus(genus);
             }
             StringBuilder html_frag = new StringBuilder();
 
             List<Species> finalSp_list = sp_list;
-            int index = pageList.stream().filter(g -> g.species.contains(finalSp_list.get(0))).findAny().orElseThrow().index;
+            int index = pageList.stream().filter(g -> g.species.contains(finalSp_list.getFirst())).findAny().orElseThrow().index;
 
             html_frag.append("<a href=\"").append("index").append(index).append(".html#").append(cat.replace(" ", "_")).append("\">\n");
             html_frag.append("<div class=\"famInfo\">\n");
@@ -1283,24 +1281,24 @@ public class genReef35 {
             String img;
             String img2 = "";
             String img3 = "";
-            img = sp_list.get(0).id + sp_list.get(0).thumbs().get(0);
+            img = sp_list.get(0).id + sp_list.get(0).thumbs().getFirst();
             if(sp_list.size() > 1)
-                img2 =  sp_list.get(1).id() +  sp_list.get(1).thumbs().get(0);
+                img2 =  sp_list.get(1).id() +  sp_list.get(1).thumbs().getFirst();
             if(sp_list.size()> 2)
-                img3 = sp_list.get(2).id() +  sp_list.get(2).thumbs().get(0);
+                img3 = sp_list.get(2).id() +  sp_list.get(2).thumbs().getFirst();
             html_frag.append("<img class=\"famPhoto\" alt=\"\" src=\"").append(base).append("pix/thumb/").append(img).append(".jpg\" alt=\"").append(sp_list.get(0).name).append(" - ").append(sp_list.get(0).sciName).append("\" title=\"").append(sp_list.get(0).name).append(" - ").append(sp_list.get(0).sciName).append("\" />");
             html_frag.append("\n<div class=\"famDetails\">\n");
-            if(!img2.equals(""))
-                html_frag.append("<img class=\"smallPhoto\" alt=\"\" src=\"").append("pix/thumb3/").append(img2).append(".jpg\" alt=\"").append(sp_list.get(0).name).append(" - ").append(sp_list.get(0).sciName).append("\" title=\"").append(sp_list.get(0).name).append(" - ").append(sp_list.get(0).sciName).append("\" />");
-            if(!img3.equals(""))
-                html_frag.append("<img class=\"smallPhoto\" alt=\"\" src=\"").append("pix/thumb3/").append(img3).append(".jpg\" alt=\"").append(sp_list.get(0).name).append(" - ").append(sp_list.get(0).sciName).append("\" title=\"").append(sp_list.get(0).name).append(" - ").append(sp_list.get(0).sciName).append("\" />");
-            if(!fam[0].equals("") && !fam[0].startsWith("_")) {
+            if(!img2.isEmpty())
+                html_frag.append("<img class=\"smallPhoto\" alt=\"\" src=\"").append("pix/thumb3/").append(img2).append(".jpg\" alt=\"").append(sp_list.getFirst().name).append(" - ").append(sp_list.getFirst().sciName).append("\" title=\"").append(sp_list.getFirst().name).append(" - ").append(sp_list.getFirst().sciName).append("\" />");
+            if(!img3.isEmpty())
+                html_frag.append("<img class=\"smallPhoto\" alt=\"\" src=\"").append("pix/thumb3/").append(img3).append(".jpg\" alt=\"").append(sp_list.getFirst().name).append(" - ").append(sp_list.getFirst().sciName).append("\" title=\"").append(sp_list.getFirst().name).append(" - ").append(sp_list.getFirst().sciName).append("\" />");
+            if(!fam[0].isEmpty() && !fam[0].startsWith("_")) {
                 html_frag.append("<p class=\"label1\">").append("Family").append(": <span class=\"label1\">").append(fam[0]).append("</span></p>\n");
-                if(!fam[1].equals(""))
+                if(!fam[1].isEmpty())
                     html_frag.append("<p class=\"label1\">Subfamily: <span class=\"label1\">").append(fam[1]).append("</span></p>\n");
             }
             else {
-                String[] c = genus_classification.getAltCatForGenus(sp_list.get(0).genus());
+                String[] c = genus_classification.getAltCatForGenus(sp_list.getFirst().genus());
                 html_frag.append("<p class=\"label1\">").append(c[1]).append(": <span class=\"label1\">").append(c[0]).append("</span></p>\n");
             }
             html_frag.append("<p class=\"label2\">").append(sp_list.size()).append(" Species</p>\n");
@@ -1344,7 +1342,7 @@ public class genReef35 {
             indexName = "index" + g.index + ".html";
         }
         String preReefString = "";
-        if(preReefName[reefRef].length() > 0) {
+        if(!preReefName[reefRef].isEmpty()) {
             preReefString = "<span class=\"pretitle\">" + preReefName[reefRef] + "</span>";
         }
         String base = "";
@@ -1393,7 +1391,7 @@ public class genReef35 {
 
         }
         ref_reef.append(extra + g.species.size());
-        if(img_reef.length() > 0) {
+        if(!img_reef.isEmpty()) {
             img_reef.deleteCharAt(img_reef.length() - 1);
             link_reef.deleteCharAt(link_reef.length() - 1);
             reef_name.deleteCharAt(reef_name.length() - 1);
@@ -1435,7 +1433,7 @@ public class genReef35 {
         for(var sp : g.species) {
             var cat = species_collection.getCat(sp.id());
             if(!subdir.equals(cat)) {
-                if(!subdir.equals("")) {
+                if(!subdir.isEmpty()) {
                     html.append("</tr></table>");
                 }
                 subdir = cat;
@@ -1447,7 +1445,7 @@ public class genReef35 {
             if((col != 0) && ((col % 3) == 0)) {
                 html.append("</tr></table><table><tr>");
             }
-            html.append("<td><img src=\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().get(0)).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" title=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" />\n");
+            html.append("<td><img src=\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().getFirst()).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" title=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" />\n");
             html.append("<br /><div class=\"nameid\"><a href=\"").append(sp.id).append(".html\">").append(sp.name).append("</a></div></td>");
             col++;
         }
@@ -1474,7 +1472,7 @@ public class genReef35 {
         }
 
         String preReefString = "";
-        if(preReefName[reefRef].length() > 0) {
+        if(!preReefName[reefRef].isEmpty()) {
             preReefString = "<span class=\"pretitle\">" + preReefName[reefRef] + "</span>";
         }
 
@@ -1485,10 +1483,10 @@ public class genReef35 {
 
         sp_list.forEach(sp -> {
             catName.put(sp.name, sp);
-            if(!sp.sciName.equals("")) {
+            if(!sp.sciName.isEmpty()) {
                 sciName.put(sp.sciName, sp);
             }
-            if(!sp.aka.equals("")) {
+            if(!sp.aka.isEmpty()) {
                 String[] akas = sp.aka.split(",");
                 for(String aka : akas) {
                     catName.put(aka.trim() + " [" + sp.name + "]", sp);
@@ -1509,7 +1507,7 @@ public class genReef35 {
             if(name.charAt(0) != alpha) {
                 if(split <= 0) {
                     html.append("\n</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>\n");
-                    split = catName.size() / 1;
+                    split = catName.size(); // / ;
                 }
                 alpha = name.charAt(0);
                 html.append("<div class=\"bigalpha\">").append(alpha).append("</div>");
@@ -1539,12 +1537,12 @@ public class genReef35 {
         html = new StringBuilder();
         alpha = '.';
         String first = "";
-        split = sciName.size() / 3 - 0;
+        split = sciName.size() / 3; // - 0
         for(Species sp : sciName.values()) {
             if(sp.sciName().charAt(0) != alpha) {
                 if(split <= 0) {
                     html.append("\n</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>\n");
-                    split = sciName.size() / 3 - 0;
+                    split = sciName.size() / 3; // - 0
                 }
                 alpha = sp.sciName().charAt(0);
                 html.append("<div class=\"bigalpha\">").append(alpha).append("</div>");
@@ -1642,7 +1640,7 @@ public class genReef35 {
         int active_count = -1;
 
         for(page elem : pageList) {
-            if(elem.species.size() == 0)
+            if(elem.species.isEmpty())
                 continue;
             if(elem.page == 1) {
                 if(elem.start != 0) {
@@ -1651,13 +1649,13 @@ public class genReef35 {
                 }
             }
 
-            if(!getSpeciesClass(species_collection.getCat(elem.species.get(0).id)).equals(speciesClass)) {
+            if(!Objects.equals(getSpeciesClass(species_collection.getCat(elem.species.getFirst().id)), speciesClass)) {
                 // New Family Header
-                if(!"".equals(speciesClass)) {
+                if(!speciesClass.isEmpty()) {
                     str.append("</ul></div>\n");
                 }
-                speciesClass = getSpeciesClass(species_collection.getCat(elem.species.get(0).id));
-                singleClass = isSingleList(speciesClass);
+                speciesClass = getSpeciesClass(species_collection.getCat(elem.species.getFirst().id));
+                singleClass = isSingleList(Objects.requireNonNull(speciesClass));
                 str.append("<h3><a>").append(speciesClass).append("</a></h3><div><ul class=\"menusec1\">");
                 active_count++;
             }
@@ -1720,7 +1718,7 @@ public class genReef35 {
     protected String readFile(String name) throws IOException {
         byte[] b;
         try(java.io.InputStream fis = getClass().getResourceAsStream(name)) {
-            b = new byte[fis.available()];
+            b = new byte[Objects.requireNonNull(fis).available()];
             if(fis.read(b) != b.length)
                 throw new IOException();
         }
@@ -1813,17 +1811,17 @@ public class genReef35 {
             str.append("<a href=\"mailto:id@reefguide.org?subject=ID for species ").append(cat).append("#").append(id).append("\"><img style=\"vertical-align: middle;\" title=\"\" alt=\"\" src=\"unknown/Mail-icon.png\" /></a></div>");
             str.append("<div class=\"pix\"><a class=\"single_image\" href=\"unknown/").append(img).append("\"><img title=\"\" alt=\"\" src=\"unknown/thumb2/").append(img).append("\" /></a></div>");
             str.append("<div class=\"comment\">Location: ").append(loc).append("</div>");
-            if(depth.length() > 0)
+            if(!depth.isEmpty())
                 str.append("<div class=\"comment\">Depth: ").append(depth).append(" ft.</div>");
-            if(size.length() > 0)
+            if(!size.isEmpty())
                 str.append("<div class=\"comment\">Size: ").append(size).append("</div>");
-            if(comment.length() > 0)
+            if(!comment.isEmpty())
                 str.append("<div class=\"comment\">").append(comment).append("</div>");
-            if(depth.length() == 0)
+            if(depth.isEmpty())
                 str.append("<div class=\"comment\">&nbsp</div>\n");
-            if(size.length() == 0)
+            if(size.isEmpty())
                 str.append("<div class=\"comment\">&nbsp</div>\n");
-            if(comment.length() == 0)
+            if(comment.isEmpty())
                 str.append("<div class=\"comment\">&nbsp</div>\n");
             str.append("</div>\n");
 
