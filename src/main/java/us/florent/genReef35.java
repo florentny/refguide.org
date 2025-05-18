@@ -420,6 +420,7 @@ public class genReef35 {
         }
     }
 
+    MongoClient mongoClient;
     protected MongoDatabase getMongoDB() {
 
         if(db == null) {
@@ -433,12 +434,16 @@ public class genReef35 {
             //Logger mongoLogger = LoggerFactory.getLogger( "org.mongodb.driver" );
             //mongoLogger.setLevel(Level.OFF);
 
-            MongoClient mongoClient = MongoClients.create();
+            mongoClient = MongoClients.create();
 
             db = mongoClient.getDatabase("reef4");
 
         }
         return db;
+    }
+
+    protected void closeMongoDB() {
+        //mongoClient.close();
     }
 
     protected void buildDB(String Config, int reefRef) {
@@ -492,6 +497,8 @@ public class genReef35 {
         } catch(Exception ex) {
             ex.printStackTrace();
             System.exit(1);
+        } finally {
+            closeMongoDB();
         }
     }
 
@@ -1763,6 +1770,7 @@ public class genReef35 {
         //reef.createSite(genReef35.configpath + "/clean", false);
         reef.createSite(genReef35.configpath, true);
         //reef.createSite(genReef35.configpath, false);
+        reef.closeMongoDB();
     }
 
     private void copyFile(String source, String dest) throws IOException {

@@ -107,15 +107,15 @@ public class speciesEdit extends javax.swing.JFrame {
 
         dist_a = db.species_collection.getAllSpecies().stream().flatMap(s -> s.dist().stream()).sorted().distinct().collect(Collectors.toList());
         node = null;
-        locations =  db.species_collection.getAllSpecies().stream().flatMap(s -> s.photo().stream()).map(p -> p.location()).sorted().distinct().collect(Collectors.toList());
-        types =  db.species_collection.getAllSpecies().stream().flatMap(s -> s.photo().stream()).filter(p -> p.type() != null).map(p -> p.type()).sorted().distinct().collect(Collectors.toList());
-        locations.add(0, "");
-        types.add(0, "");
+        locations =  db.species_collection.getAllSpecies().stream().flatMap(s -> s.photo().stream()).map(genReef35.photo::location).sorted().distinct().collect(Collectors.toList());
+        types =  db.species_collection.getAllSpecies().stream().flatMap(s -> s.photo().stream()).filter(p -> p.type() != null).map(genReef35.photo::type).sorted().distinct().collect(Collectors.toList());
+        locations.addFirst("");
+        types.addFirst("");
     }
 
     private void fillValues() {
         Set<String> name = new TreeSet<>();
-        String[] list = db.species_collection.getAllSpecies().stream().map(s->s.genus()).sorted().distinct().collect(Collectors.toList()).toArray(new String[0]);
+        String[] list = db.species_collection.getAllSpecies().stream().map(genReef35.Species::genus).sorted().distinct().toList().toArray(new String[0]);
 
         jComboBox1.setModel(new DefaultComboBoxModel<>(list));
 
