@@ -34,6 +34,8 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 
+import static com.mongodb.client.model.Filters.eq;
+
 public class genReef35 {
 
     protected genusClassifaction genus_classification;
@@ -142,7 +144,12 @@ public class genReef35 {
         }
 
         String getCatForGenus(String genus) {
-            return famCat.get(getFamilyForGenus(genus)).cat;
+            try {
+                return famCat.get(getFamilyForGenus(genus)).cat;
+            } catch (NullPointerException e) {
+                System.out.println("MISSING CAT FOR GENUS: " + genus);
+                throw e;
+            }
         }
     }
 
@@ -315,25 +322,25 @@ public class genReef35 {
             this.analytics = analytics;
             System.out.println("================= Site " + path + " =================");
             System.out.println("Processing worldwide:");
-            int all = process("/config/reeflist4.xml", basepathIndexAll, 0, hearderAll);
+            int all = process("reeflist4", basepathIndexAll, 0, hearderAll);
             int all_pic = numPhotos;
             System.out.println("Processing Caribbean:");
-            int carib = process("/config/reeflistcarib4.xml", basepathIndexCarib, 1, hearderCarib);
+            int carib = process("reeflistcarib4", basepathIndexCarib, 1, hearderCarib);
             int carib_pic = numPhotos;
             System.out.println("Processing Indo-Pacific:");
-            int indopac = process("/config/reeflist4.xml", basepathIndexIndoPac, 2,  hearderIndopac);
+            int indopac = process("reeflist4", basepathIndexIndoPac, 2,  hearderIndopac);
             int indopac_pic = numPhotos;
             System.out.println("Processing Florida Keys:");
-            int keys = process("/config/reeflistcarib4.xml", basepathIndexKeys, 3, hearderKeys);
+            int keys = process("reeflistcarib4", basepathIndexKeys, 3, hearderKeys);
             int key_pics = numPhotos;
             System.out.println("Processing Hawaii:");
-            int hawaii = process("/config/reeflisthawaii4.xml", basepathIndexHawaii, 4, hearderHawaii);
+            int hawaii = process("reeflisthawaii4", basepathIndexHawaii, 4, hearderHawaii);
             int hawaii_pics = numPhotos;
             System.out.println("Processing Baja:");
-            int baja = process("/config/reeflistbaja4.xml", basepathIndexBaja, 5, hearderHawaii);
+            int baja = process("reeflistbaja4", basepathIndexBaja, 5, hearderHawaii);
             int baja_pics = numPhotos;
             System.out.println("Processing Polynesia:");
-            int poly = process("/config/reeflisthawaii4.xml", basepathIndexPolynesia, 6, hearderPolynesia);
+            int poly = process("reeflisthawaii4", basepathIndexPolynesia, 6, hearderPolynesia);
             int poly_pics = numPhotos;
 
             String outString = readFile("about.html");
@@ -403,7 +410,7 @@ public class genReef35 {
     }
 
     void buildAllData(String configFile, int reefRef) {
-        buildDB(configFile, reefRef);
+        buildDB2(configFile, reefRef);
 
         int index = 1;
         int start = 0;
@@ -424,16 +431,6 @@ public class genReef35 {
     protected MongoDatabase getMongoDB() {
 
         if(db == null) {
-//            CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
-//                    fromProviders(PojoCodecProvider.builder().automatic(true).build()));
-//            MongoClientSettings settings = MongoClientSettings.builder()
-//                    .codecRegistry(pojoCodecRegistry)
-//                    .build();
-            //MongoClient mongoClient = MongoClients.create(settings);
-
-            //Logger mongoLogger = LoggerFactory.getLogger( "org.mongodb.driver" );
-            //mongoLogger.setLevel(Level.OFF);
-
             mongoClient = MongoClients.create();
 
             db = mongoClient.getDatabase("reef4");
@@ -443,62 +440,63 @@ public class genReef35 {
     }
 
     protected void closeMongoDB() {
-        //mongoClient.close();
+        mongoClient.close();
     }
 
-    protected void buildDB(String Config, int reefRef) {
-
+    protected void buildDB2(String Config, int reefRef) {
         try {
             db = getMongoDB();
             loadDataBase(db, reefRef);
+
+            Document config =  db.getCollection("reefconfig").find(eq("reef", Config)).first();
             pageList = new java.util.ArrayList<>();
-            java.io.BufferedReader reeffile = new java.io.BufferedReader(new java.io.FileReader(configpath + Config));
-            String masterline;
-            String cat;
-            String catType = null;
-            page _page = null;
-            while((masterline = reeffile.readLine()) != null) {
-                masterline = masterline.trim();
-                if(masterline.startsWith("</")) {
+            if(config == null) {
+                System.out.println("Null reefconfig");
+                return;
+            }
+
+            for (String key : config.keySet()) {
+                if(key.equals("_id") || key.equals("reef"))
                     continue;
-                }
-                if(masterline.startsWith("<dir")) {
-                    _page = new page();
-                    _page.name = replaceCat(getName(masterline), reefRef);
-                    catType = getSpeciesType(masterline) == null ? catType : getSpeciesType(masterline);
-                    masterline = reeffile.readLine();
-                    _page.index = Integer.parseInt(getIndex(masterline));
-                    pageList.add(_page);
-                } else if(masterline.startsWith("<page")) {
-                    _page = new page();
-                    _page.name = pageList.getLast().name;
-                    _page.index = Integer.parseInt(getIndex(masterline));
-                    _page.page = pageList.getLast().page + 1;
-                    pageList.add(_page);
-                } else if(_page != null) {
-                    var group = genus_classification.getGroup(masterline);
-                    if(group == null) {
-                        group = new ArrayList<>();
-                        group.add(masterline);
-                    }
-                    for(var g : group) {
-                        cat = overrideCat(g, reefRef);
-                        _page.group.put(cat, overrideCat(masterline, reefRef));
-                        genus_classification.addCatSpeciesType(cat, catType);
-                        List<String> sl = species_collection.getSpeciesNameFromCat(cat);
-                        for(var sp : sl) {
-                            var species = species_collection.getSpecies(sp);
-                            _page.species.add(species);
+                String catType = key.replace("&", "&amp;");
+
+                Document value = (Document) config.get(key);
+
+                for(var key2 : value.keySet()) {
+                    String dir = key2.replace("&", "&amp;");
+                    int pagenum = 1;
+                    for(var key3 : value.getList(key2, List.class)) {
+                        page _page = new page();
+                        _page.name = replaceCat(dir, reefRef);
+                        _page.page =  pagenum++;
+                        pageList.add(_page);
+
+                        for(var name : key3) {
+                            var group = genus_classification.getGroup(name.toString());
+                            if(group == null) {
+                                group = new ArrayList<>();
+                                group.add(name.toString());
+                            }
+                            group.stream().map(g -> overrideCat(g, reefRef)).forEachOrdered(cat -> {
+                                _page.group.put(cat, overrideCat(name.toString(), reefRef));
+                                genus_classification.addCatSpeciesType(cat, catType);
+                                List<String> sl = species_collection.getSpeciesNameFromCat(cat);
+                                sl.forEach(sp -> {
+                                    var species = species_collection.getSpecies(sp);
+                                    _page.species.add(species);
+                                });
+                            });
                         }
+
                     }
+
+
                 }
             }
 
         } catch(Exception ex) {
             ex.printStackTrace();
             System.exit(1);
-        } finally {
-            closeMongoDB();
         }
     }
 
@@ -587,23 +585,6 @@ public class genReef35 {
                     || comp.contains("Circum") || comp.toLowerCase().contains("world");
         }
         return false;
-    }
-
-    private String getName(String masterline) {
-        return masterline.split("name=\"")[1].split("\"")[0];
-    }
-
-    private String getSpeciesType(String masterline) {
-        if(masterline.contains("type"))
-            return masterline.split("type=\"")[1].split("\"")[0];
-        return null;
-    }
-
-    private String getIndex(String masterline) {
-        if(!masterline.contains("index")) {
-            return "0";
-        }
-        return masterline.split("index=\"")[1].split("\"")[0];
     }
 
     protected int depthmetric(int d) {
@@ -1759,6 +1740,7 @@ public class genReef35 {
 
     public static void main(String... args) {
 
+        System.setProperty("org.slf4j.simpleLogger.log.org.mongodb.driver", "warn");
 
         genReef35 reef = new genReef35();
         reef.basepathIndexAll = "/home/fc/web/reef4";
@@ -1774,23 +1756,16 @@ public class genReef35 {
     }
 
     private void copyFile(String source, String dest) throws IOException {
-        FileChannel in = null, out = null;
-        try {
-            in = new FileInputStream(source).getChannel();
-            out = new FileOutputStream(dest).getChannel();
 
+        try (FileChannel in = new FileInputStream(source).getChannel();
+             FileChannel out = new FileOutputStream(dest).getChannel()) {
             long size = in.size();
             MappedByteBuffer buf = in.map(FileChannel.MapMode.READ_ONLY, 0, size);
 
             out.write(buf);
 
-        } finally {
-            if(in != null) {
-                in.close();
-            }
-            if(out != null) {
-                out.close();
-            }
+        } catch (Exception fnfe) {
+            fnfe.printStackTrace();
         }
     }
 
