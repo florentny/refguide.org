@@ -286,8 +286,6 @@ public class genReef35 {
             return "Sweetlips";
         if(reefRef == 2 && cat.equals("Combtooth Blennies"))
             return "Blennies";
-        if(cat.equals("Sponges"))
-            return "Common Sponges";
         return cat;
     }
 

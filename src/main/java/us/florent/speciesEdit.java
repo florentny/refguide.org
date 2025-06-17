@@ -103,11 +103,12 @@ public class speciesEdit extends javax.swing.JFrame {
     private void initDB() throws IOException {
         //genReef35 reef = new genReef35();
         db.basepathIndexAll = "/home/fc/web/reef4";
-        db.buildAllData("/config/reeflist4.xml", 0);
+        db.buildAllData("reeflist4", 0);
 
         dist_a = db.species_collection.getAllSpecies().stream().flatMap(s -> s.dist().stream()).sorted().distinct().collect(Collectors.toList());
         node = null;
         locations =  db.species_collection.getAllSpecies().stream().flatMap(s -> s.photo().stream()).map(genReef35.photo::location).sorted().distinct().collect(Collectors.toList());
+        locations.addFirst("Palm Beach, Florida");
         types =  db.species_collection.getAllSpecies().stream().flatMap(s -> s.photo().stream()).filter(p -> p.type() != null).map(genReef35.photo::type).sorted().distinct().collect(Collectors.toList());
         locations.addFirst("");
         types.addFirst("");
@@ -950,6 +951,9 @@ public class speciesEdit extends javax.swing.JFrame {
     }
 
     public static void main(String args[]) {
+
+        System.setProperty("org.slf4j.simpleLogger.log.org.mongodb.driver", "warn");
+
         java.awt.EventQueue.invokeLater(() -> {
             try {
                 new speciesEdit().setVisible(true);
