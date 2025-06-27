@@ -280,10 +280,6 @@ public class genReef35 {
     }
 
     static private String overrideCat(String cat, int reefRef) {
-        if(reefRef == 0 && cat.equals("Grunts"))
-            return "Grunts & Sweetlips";
-        if(reefRef == 2 && cat.equals("Grunts"))
-            return "Sweetlips";
         if(reefRef == 2 && cat.equals("Combtooth Blennies"))
             return "Blennies";
         return cat;

@@ -9,6 +9,7 @@ import org.json.JSONObject;
 
 
 import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -33,6 +34,16 @@ public class SpeciesTree {
         private final String rank;
         boolean wasInserted = false;
         private String category = null;
+        int AphiaID;
+
+        public int getAphiaID() {
+            return AphiaID;
+        }
+
+        public void setAphiaID(int aphiaID) {
+            AphiaID = aphiaID;
+        }
+
 
         public String getCategory() {
             return category;
@@ -57,7 +68,11 @@ public class SpeciesTree {
         }
 
         public String getSortName() {
-            return name;
+            return getName();
+        }
+
+        public String getSciName() {
+            return getName();
         }
 
 
@@ -71,6 +86,7 @@ public class SpeciesTree {
         String id = null;
         String genus = null;
         String epithet = null;
+        List<Taxon> path;
 
         public Species(String name, String rank) {
             super(name, rank);
@@ -80,6 +96,12 @@ public class SpeciesTree {
         public String getSortName() {
             return epithet;
         }
+
+        @Override
+        public String getSciName() {
+            return genus + " " + epithet;
+        }
+
     }
 
     public static class TreeNode<T> {
@@ -104,7 +126,7 @@ public class SpeciesTree {
         }
     }
 
-    private final TreeNode<Taxon> root = new TreeNode<>(new Taxon("Root", "Domain"));
+    private final TreeNode<Taxon> root = new TreeNode<>(new Taxon("Biota", "Domain"));
 
 
     public TreeNode<Taxon> breadthFirstSearch(TreeNode<Taxon> root, String targetName) {
@@ -130,6 +152,23 @@ public class SpeciesTree {
         }
         for(TreeNode<Taxon> child : node.getChildren()) {
             TreeNode<Taxon> result = depthFirstSearch(child, targetName);
+            if(result != null) {
+                return result;
+            }
+        }
+        return null; // Not found
+    }
+
+    public Species findSpecies(TreeNode<Taxon> node, String name) {
+        if(node == null)
+            return null;
+        if(node.getValue() instanceof Species sp) {
+            if(sp.getSciName().equals(name))
+                return sp;
+        }
+
+        for(TreeNode<Taxon> child : node.getChildren()) {
+            var result = findSpecies(child, name);
             if(result != null) {
                 return result;
             }
@@ -253,30 +292,53 @@ public class SpeciesTree {
         return sb.toString();
     }
 
-    void createTree(MongoDatabase db) {
-        MongoCollection<Document> collection = db.getCollection("categories");
+    void createTree(MongoDatabase db) throws Exception {
+
+        MongoCollection<Document> collection = db.getCollection("taxon");
         for(Document doc : collection.find()) {
-            TreeNode<Taxon> node = root;
-            if(!doc.get("alttype").toString().isEmpty()) {
-                String alttype = doc.get("alttype").toString();
-                String name = doc.get("altclassification").toString();
-                node = addLeaf("Root", name, alttype);
-            }
-            // family and subfamily
-
-            String family = doc.get("family").toString();
-            String subfamily = doc.get("subfamily").toString();
-            TreeNode<Taxon> familyNode = addLeaf(node.getValue().getName(), family, "Family");
-            if(!subfamily.isEmpty()) {
-                TreeNode<Taxon> subfamilyNode = addLeaf(familyNode.getValue().getName(), subfamily, "Subfamily");
-                subfamilyNode.getValue().setCategory(doc.get("category").toString());
+            String name = doc.get("name").toString();
+            String rank = doc.get("rank").toString();
+            String parent = doc.get("parent").toString();
+            String category = doc.get("category") != null ? doc.get("category").toString() : null;
+            Taxon taxon = new Taxon(name, rank);
+            taxon.setCategory(category);
+            TreeNode<Taxon> node = new TreeNode<>(taxon);
+            if(!parent.isEmpty()) {
+                TreeNode<Taxon> parentNode = breadthFirstSearch(root, parent);
+                if(parentNode != null) {
+                    parentNode.addChild(node);
+                } else {
+                    System.out.println("Parent not found: " + parent);
+                    throw new Exception("Parent not found: " + parent);
+                }
             } else {
-                familyNode.getValue().setCategory(doc.get("category").toString());
+                root.addChild(node);
             }
-
         }
 
-        topTaxonomy();
+//        MongoCollection<Document> collection = db.getCollection("categories");
+//        for(Document doc : collection.find()) {
+//            TreeNode<Taxon> node = root;
+//            if(!doc.get("alttype").toString().isEmpty()) {
+//                String alttype = doc.get("alttype").toString();
+//                String name = doc.get("altclassification").toString();
+//                node = addLeaf("Biota", name, alttype);
+//            }
+//            // family and subfamily
+//
+//            String family = doc.get("family").toString();
+//            String subfamily = doc.get("subfamily").toString();
+//            TreeNode<Taxon> familyNode = addLeaf(node.getValue().getName(), family, "Family");
+//            if(!subfamily.isEmpty()) {
+//                TreeNode<Taxon> subfamilyNode = addLeaf(familyNode.getValue().getName(), subfamily, "Subfamily");
+//                subfamilyNode.getValue().setCategory(doc.get("category").toString());
+//            } else {
+//                familyNode.getValue().setCategory(doc.get("category").toString());
+//            }
+//
+//        }
+
+        //topTaxonomy();
 
         collection = db.getCollection("genus");
         for(Document doc : collection.find()) {
@@ -297,8 +359,8 @@ public class SpeciesTree {
             if(sciName.length < 2) {
                 System.out.println("Invalid scientific name: " + doc.get("Name").toString());
                 //addSpecies("Unknown", "Unknown", doc.get("Name").toString());
-                sciName = new String[]{ doc.get("id").toString(), "Unknown"}; // Default to Unknown if invalid
-               // continue; // Skip invalid names
+                sciName = new String[]{doc.get("id").toString(), "Unknown"}; // Default to Unknown if invalid
+                // continue; // Skip invalid names
             }
             addSpecies(sciName[0], sciName[1], doc.get("Name").toString());
         }
@@ -309,251 +371,255 @@ public class SpeciesTree {
 
     void topTaxonomy() {
 
-        insertNodeBetween("Root", "Balistidae", "Tetraodontiformes", "Order");
-        insertNodeBetween("Root", "Monacanthidae", "Tetraodontiformes", "Order");
-        insertNodeBetween("Root", "Tetraodontidae", "Tetraodontiformes", "Order");
-        insertNodeBetween("Root", "Diodontidae", "Tetraodontiformes", "Order");
-        insertNodeBetween("Root", "Ostraciidae", "Tetraodontiformes", "Order");
-        insertNodeBetween("Root", "Balistidae", "Tetraodontiformes", "Order");
-        insertNodeBetween("Root", "Ogcocephalidae", "Lophiiformes", "Order");
-        insertNodeBetween("Root", "Antennariidae", "Lophiiformes", "Order");
-        insertNodeBetween("Root", "Dactylopteridae", "Dactylopteriformes", "Order");
-        insertNodeBetween("Root", "Pegasidae", "Dactylopteriformes", "Order");
-        insertNodeBetween("Root", "Bothidae", "Pleuronectiformes", "Order");
-        insertNodeBetween("Root", "Samaridae", "Pleuronectiformes", "Order");
-        insertNodeBetween("Root", "Paralichthyidae", "Pleuronectiformes", "Order");
-        insertNodeBetween("Root", "Soleidae", "Pleuronectiformes", "Order");
-        insertNodeBetween("Root", "Cynoglossidae", "Pleuronectiformes", "Order");
-        insertNodeBetween("Root", "Gobiesocidae", "Gobiesociformes", "Order");
+        insertNodeBetween("Biota", "Balistidae", "Tetraodontiformes", "Order");
+        insertNodeBetween("Biota", "Monacanthidae", "Tetraodontiformes", "Order");
+        insertNodeBetween("Biota", "Tetraodontidae", "Tetraodontiformes", "Order");
+        insertNodeBetween("Biota", "Diodontidae", "Tetraodontiformes", "Order");
+        insertNodeBetween("Biota", "Ostraciidae", "Tetraodontiformes", "Order");
+        insertNodeBetween("Biota", "Balistidae", "Tetraodontiformes", "Order");
+        insertNodeBetween("Biota", "Ogcocephalidae", "Lophiiformes", "Order");
+        insertNodeBetween("Biota", "Antennariidae", "Lophiiformes", "Order");
+        insertNodeBetween("Biota", "Dactylopteridae", "Dactylopteriformes", "Order");
+        insertNodeBetween("Biota", "Pegasidae", "Dactylopteriformes", "Order");
+        insertNodeBetween("Biota", "Bothidae", "Pleuronectiformes", "Order");
+        insertNodeBetween("Biota", "Samaridae", "Pleuronectiformes", "Order");
+        insertNodeBetween("Biota", "Paralichthyidae", "Pleuronectiformes", "Order");
+        insertNodeBetween("Biota", "Soleidae", "Pleuronectiformes", "Order");
+        insertNodeBetween("Biota", "Cynoglossidae", "Pleuronectiformes", "Order");
+        insertNodeBetween("Biota", "Gobiesocidae", "Gobiesociformes", "Order");
 
-        insertNodeBetween("Root", "Scorpaenidae", "Scorpaenoidei", "Suborder");
-        insertNodeBetween("Root", "Platycephalidae", "Scorpaenoidei", "Suborder");
-        insertNodeBetween("Root", "Synanceiidae", "Scorpaenoidei", "Suborder");
-        insertNodeBetween("Root", "Tetrarogidae", "Scorpaenoidei", "Suborder");
-        insertNodeBetween("Root", "Aploactinidae", "Scorpaenoidei", "Suborder");
-        insertNodeBetween("Root", "Uranoscopidae", "Uranoscopoidei", "Suborder");
-        insertNodeBetween("Root", "Pinguipedidae", "Uranoscopoidei", "Suborder");
-        insertNodeBetween("Root", "Uranoscopoidei", "Perciformes", "Order");
-        insertNodeBetween("Root", "Scorpaenoidei", "Perciformes", "Order");
-        insertNodeBetween("Root", "Cirrhitidae", "Centrarchiformes", "Order");
-        insertNodeBetween("Root", "Callionymidae", "Callionymiformes", "Order");
-        insertNodeBetween("Root", "Microdesmidae", "Gobiiformes", "Order");
-        insertNodeBetween("Root", "Trichonotidae", "Gobiiformes", "Order");
-        insertNodeBetween("Root", "Synodontidae", "Aulopiformes", "Order");
-        insertNodeBetween("Root", "Ephippidae", "Acanthuriformes", "Order");
-        insertNodeBetween("Root", "Chelonioidea", "Testudines", "Order");
-        insertNodeBetween("Root", "Elapidae", "Serpentes", "Suborder");
-        insertNodeBetween("Root", "Stenopodidea", "Decapoda", "Order");
-        insertNodeBetween("Root", "Caridea", "Decapoda", "Order");
-        insertNodeBetween("Root", "Dendrobranchiata", "Decapoda", "Order");
-        insertNodeBetween("Root", "Axiidea", "Decapoda", "Order");
-        insertNodeBetween("Root", "Achelata", "Decapoda", "Order");
-        insertNodeBetween("Root", "Astacidea", "Decapoda", "Order");
-        insertNodeBetween("Root", "Anomura", "Decapoda", "Order");
-        insertNodeBetween("Root", "Brachyura", "Decapoda", "Order");
-        insertNodeBetween("Root", "Corophiida", "Amphipoda", "Order");
+        insertNodeBetween("Biota", "Scorpaenidae", "Scorpaenoidei", "Suborder");
+        insertNodeBetween("Biota", "Platycephalidae", "Scorpaenoidei", "Suborder");
+        insertNodeBetween("Biota", "Synanceiidae", "Scorpaenoidei", "Suborder");
+        insertNodeBetween("Biota", "Tetrarogidae", "Scorpaenoidei", "Suborder");
+        insertNodeBetween("Biota", "Aploactinidae", "Scorpaenoidei", "Suborder");
+        insertNodeBetween("Biota", "Uranoscopidae", "Uranoscopoidei", "Suborder");
+        insertNodeBetween("Biota", "Pinguipedidae", "Uranoscopoidei", "Suborder");
+        insertNodeBetween("Biota", "Uranoscopoidei", "Perciformes", "Order");
+        insertNodeBetween("Biota", "Percoidei", "Perciformes", "Order");
+        insertNodeBetween("Biota", "Scorpaenoidei", "Perciformes", "Order");
+        insertNodeBetween("Biota", "Cirrhitidae", "Centrarchiformes", "Order");
+        insertNodeBetween("Biota", "Callionymidae", "Callionymiformes", "Order");
+        insertNodeBetween("Biota", "Microdesmidae", "Gobiiformes", "Order");
+        insertNodeBetween("Biota", "Trichonotidae", "Gobiiformes", "Order");
+        insertNodeBetween("Biota", "Synodontidae", "Aulopiformes", "Order");
+        insertNodeBetween("Biota", "Ephippidae", "Acanthuriformes", "Order");
+        insertNodeBetween("Biota", "Chelonioidea", "Testudines", "Order");
+        insertNodeBetween("Biota", "Elapidae", "Serpentes", "Suborder");
+        insertNodeBetween("Biota", "Stenopodidea", "Decapoda", "Order");
+        insertNodeBetween("Biota", "Caridea", "Decapoda", "Order");
+        insertNodeBetween("Biota", "Dendrobranchiata", "Decapoda", "Order");
+        insertNodeBetween("Biota", "Axiidea", "Decapoda", "Order");
+        insertNodeBetween("Biota", "Achelata", "Decapoda", "Order");
+        insertNodeBetween("Biota", "Astacidea", "Decapoda", "Order");
+        insertNodeBetween("Biota", "Anomura", "Decapoda", "Order");
+        insertNodeBetween("Biota", "Brachyura", "Decapoda", "Order");
+        insertNodeBetween("Biota", "Corophiida", "Amphipoda", "Order");
 
-        insertNodeBetween("Root", "Galatheoidea", "Anomura", "Infraorder");
+        insertNodeBetween("Biota", "Galatheoidea", "Anomura", "Infraorder");
 
-        insertNodeBetween("Root", "Spionida", "Canalipalpata", "Order");
-        insertNodeBetween("Root", "Sabellida", "Canalipalpata", "Order");
-        insertNodeBetween("Root", "Terebellida", "Canalipalpata", "Order");
-        insertNodeBetween("Root", "Doridina", "Nudibranchia", "Order");
-        insertNodeBetween("Root", "Cladobranchia", "Nudibranchia", "Order");
-        insertNodeBetween("Root", "Arminoidea", "Cladobranchia", "Suborder");
-        insertNodeBetween("Root", "Dendronotoidea", "Cladobranchia", "Suborder");
-        insertNodeBetween("Root", "Tritonioidea", "Cladobranchia", "Suborder");
-        insertNodeBetween("Root", "Amphilepidida", "Ophintegrida", "Superorder");
-        insertNodeBetween("Root", "Ophiacanthida", "Ophintegrida", "Superorder");
-        insertNodeBetween("Root", "Euryalida", "Euryophiurida", "Superorder");
-
-
-        insertNodeBetween("Root", "Tetraodontiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Lophiiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Batrachoidiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Dactylopteriformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Perciformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Centrarchiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Pleuronectiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Gobiesociformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Callionymiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Gobiiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Aulopiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Mulliformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Blenniiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Holocentriformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Kurtiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Carangiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Scombriformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Acanthuriformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Elopiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Albuliformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Beloniformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Siluriformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Syngnathiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Anguilliformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Eupercaria", "Teleostei", "Class");
-        insertNodeBetween("Root", "Acropomatiformes", "Teleostei", "Class");
-        insertNodeBetween("Root", "Carangaria", "Teleostei", "Class");
-        insertNodeBetween("Root", "Ovalentaria", "Teleostei", "Class");
-        insertNodeBetween("Root", "Canalipalpata", "Polychaeta", "Class");
-        insertNodeBetween("Root", "Eunicida", "Polychaeta", "Class");
-        insertNodeBetween("Root", "Phyllodocida", "Polychaeta", "Class");
-        insertNodeBetween("Root", "Nudibranchia", "Euthyneura", "Infraclass");
-        insertNodeBetween("Root", "Sacoglossa", "Euthyneura", "Infraclass");
-        insertNodeBetween("Root", "Cephalaspidea", "Euthyneura", "Infraclass");
-        insertNodeBetween("Root", "Euthyneura", "Heterobranchia", "Subclass");
-        insertNodeBetween("Root", "Architectonicoidea", "Heterobranchia", "Subclass");
-        insertNodeBetween("Root", "Heterobranchia", "Gastropoda", "Class");
-        insertNodeBetween("Root", "Trochida", "Vetigastropoda", "Class");
-        insertNodeBetween("Root", "Vetigastropoda", "Gastropoda", "Class");
-        insertNodeBetween("Root", "Acteonimorpha", "Euthyneura", "Infraclass");
-        insertNodeBetween("Root", "Aplysiida", "Euthyneura", "Infraclass");
-        insertNodeBetween("Root", "Pteropoda", "Euthyneura", "Infraclass");
-        insertNodeBetween("Root", "Pleurobranchida", "Euthyneura", "Infraclass");
-        insertNodeBetween("Root", "Myopsida", "Cephalopoda", "Class");
-        insertNodeBetween("Root", "Idiosepida", "Cephalopoda", "Class");
-        insertNodeBetween("Root", "Sepiida", "Cephalopoda", "Class");
-        insertNodeBetween("Root", "Octopoda", "Cephalopoda", "Class");
-        insertNodeBetween("Root", "Cardiida", "Bivalvia", "Class");
-        insertNodeBetween("Root", "Ostreida", "Bivalvia", "Class");
-        insertNodeBetween("Root", "Pectinida", "Bivalvia", "Class");
-        insertNodeBetween("Root", "Limida", "Bivalvia", "Class");
-        insertNodeBetween("Root", "Euryophiurida", "Ophiuroidea", "Class");
-        insertNodeBetween("Root", "Ophintegrida", "Ophiuroidea", "Class");
-        insertNodeBetween("Root", "Chitonida", "Polyplacophora", "Class");
-        insertNodeBetween("Root", "Heteronemertea", "Pilidiophora", "Class");
-        insertNodeBetween("Root", "Scleralcyonacea", "Octocorallia", "Class");
-        insertNodeBetween("Root", "Malacalcyonacea", "Octocorallia", "Class");
-        insertNodeBetween("Root", "Scleralcyonacea", "Octocorallia", "Class");
-        insertNodeBetween("Root", "Dendrochirotida", "Holothuroidea", "Class");
-        insertNodeBetween("Root", "Apodida", "Holothuroidea", "Class");
-        insertNodeBetween("Root", "Holothuriida", "Holothuroidea", "Class");
-        insertNodeBetween("Root", "Synallactida", "Holothuroidea", "Class");
-        insertNodeBetween("Root", "Camarodonta", "Echinoidea", "Class");
-        insertNodeBetween("Root", "Cidaroida", "Echinoidea", "Class");
-        insertNodeBetween("Root", "Diadematoida", "Echinoidea", "Class");
-        insertNodeBetween("Root", "Echinothurioida", "Echinoidea", "Class");
-        insertNodeBetween("Root", "Spatangoida", "Echinoidea", "Class");
-        insertNodeBetween("Root", "Valvatida", "Asteroidea", "Class");
-        insertNodeBetween("Root", "Paxillosida", "Asteroidea", "Class");
-        insertNodeBetween("Root", "Spinulosida", "Asteroidea", "Class");
-        insertNodeBetween("Root", "Rhizostomeae", "Scyphozoa", "Class");
-        insertNodeBetween("Root", "Semaeostomeae", "Scyphozoa", "Class");
-        insertNodeBetween("Root", "Coronatae", "Scyphozoa", "Class");
-        insertNodeBetween("Root", "Comatulida", "Crinoidea", "Class");
-        insertNodeBetween("Root", "Balanomorpha", "Thecostraca", "Class");
-        insertNodeBetween("Root", "Pantopoda", "Pycnogonida", "Class");
-        insertNodeBetween("Root", "Xiphosurida", "Merostomata", "Class");
-        insertNodeBetween("Root", "Lobata", "Tentaculata", "Class");
-        insertNodeBetween("Root", "Cestida", "Tentaculata", "Class");
-        insertNodeBetween("Root", "Platyctenida", "Tentaculata", "Order");
+        insertNodeBetween("Biota", "Spionida", "Canalipalpata", "Order");
+        insertNodeBetween("Biota", "Sabellida", "Canalipalpata", "Order");
+        insertNodeBetween("Biota", "Terebellida", "Canalipalpata", "Order");
+        insertNodeBetween("Biota", "Doridina", "Nudibranchia", "Order");
+        insertNodeBetween("Biota", "Cladobranchia", "Nudibranchia", "Order");
+        insertNodeBetween("Biota", "Arminoidea", "Cladobranchia", "Suborder");
+        insertNodeBetween("Biota", "Dendronotoidea", "Cladobranchia", "Suborder");
+        insertNodeBetween("Biota", "Tritonioidea", "Cladobranchia", "Suborder");
+        insertNodeBetween("Biota", "Amphilepidida", "Ophintegrida", "Superorder");
+        insertNodeBetween("Biota", "Ophiacanthida", "Ophintegrida", "Superorder");
+        insertNodeBetween("Biota", "Euryalida", "Euryophiurida", "Superorder");
 
 
+        insertNodeBetween("Biota", "Tetraodontiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Lophiiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Batrachoidiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Dactylopteriformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Perciformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Centrarchiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Pleuronectiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Gobiesociformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Callionymiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Gobiiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Aulopiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Mulliformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Blenniiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Holocentriformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Kurtiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Carangiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Scombriformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Acanthuriformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Elopiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Albuliformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Beloniformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Siluriformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Syngnathiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Anguilliformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Eupercaria", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Acropomatiformes", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Carangaria", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Ovalentaria", "Teleostei", "Class");
+        insertNodeBetween("Biota", "Canalipalpata", "Polychaeta", "Class");
+        insertNodeBetween("Biota", "Eunicida", "Polychaeta", "Class");
+        insertNodeBetween("Biota", "Phyllodocida", "Polychaeta", "Class");
+        insertNodeBetween("Biota", "Nudibranchia", "Euthyneura", "Infraclass");
+        insertNodeBetween("Biota", "Sacoglossa", "Euthyneura", "Infraclass");
+        insertNodeBetween("Biota", "Cephalaspidea", "Euthyneura", "Infraclass");
+        insertNodeBetween("Biota", "Euthyneura", "Heterobranchia", "Subclass");
+        insertNodeBetween("Biota", "Architectonicoidea", "Heterobranchia", "Subclass");
+        insertNodeBetween("Biota", "Heterobranchia", "Gastropoda", "Class");
+        insertNodeBetween("Biota", "Trochida", "Vetigastropoda", "Subclass");
+        insertNodeBetween("Biota", "Vetigastropoda", "Gastropoda", "Class");
+        insertNodeBetween("Biota", "Acteonimorpha", "Euthyneura", "Infraclass");
+        insertNodeBetween("Biota", "Aplysiida", "Euthyneura", "Infraclass");
+        insertNodeBetween("Biota", "Pteropoda", "Euthyneura", "Infraclass");
+        insertNodeBetween("Biota", "Pleurobranchida", "Euthyneura", "Infraclass");
+        insertNodeBetween("Biota", "Myopsida", "Cephalopoda", "Class");
+        insertNodeBetween("Biota", "Idiosepida", "Cephalopoda", "Class");
+        insertNodeBetween("Biota", "Sepiida", "Cephalopoda", "Class");
+        insertNodeBetween("Biota", "Octopoda", "Cephalopoda", "Class");
+        insertNodeBetween("Biota", "Cardiida", "Bivalvia", "Class");
+        insertNodeBetween("Biota", "Ostreida", "Bivalvia", "Class");
+        insertNodeBetween("Biota", "Pectinida", "Bivalvia", "Class");
+        insertNodeBetween("Biota", "Limida", "Bivalvia", "Class");
+        insertNodeBetween("Biota", "Euryophiurida", "Ophiuroidea", "Class");
+        insertNodeBetween("Biota", "Ophintegrida", "Ophiuroidea", "Class");
+        insertNodeBetween("Biota", "Chitonida", "Polyplacophora", "Class");
+        insertNodeBetween("Biota", "Heteronemertea", "Pilidiophora", "Class");
+        insertNodeBetween("Biota", "Scleralcyonacea", "Octocorallia", "Class");
+        insertNodeBetween("Biota", "Malacalcyonacea", "Octocorallia", "Class");
+        insertNodeBetween("Biota", "Scleralcyonacea", "Octocorallia", "Class");
+        insertNodeBetween("Biota", "Dendrochirotida", "Holothuroidea", "Class");
+        insertNodeBetween("Biota", "Apodida", "Holothuroidea", "Class");
+        insertNodeBetween("Biota", "Holothuriida", "Holothuroidea", "Class");
+        insertNodeBetween("Biota", "Synallactida", "Holothuroidea", "Class");
+        insertNodeBetween("Biota", "Camarodonta", "Echinoidea", "Class");
+        insertNodeBetween("Biota", "Cidaroida", "Echinoidea", "Class");
+        insertNodeBetween("Biota", "Diadematoida", "Echinoidea", "Class");
+        insertNodeBetween("Biota", "Echinothurioida", "Echinoidea", "Class");
+        insertNodeBetween("Biota", "Spatangoida", "Echinoidea", "Class");
+        insertNodeBetween("Biota", "Valvatida", "Asteroidea", "Class");
+        insertNodeBetween("Biota", "Paxillosida", "Asteroidea", "Class");
+        insertNodeBetween("Biota", "Spinulosida", "Asteroidea", "Class");
+        insertNodeBetween("Biota", "Rhizostomeae", "Scyphozoa", "Class");
+        insertNodeBetween("Biota", "Semaeostomeae", "Scyphozoa", "Class");
+        insertNodeBetween("Biota", "Coronatae", "Scyphozoa", "Class");
+        insertNodeBetween("Biota", "Comatulida", "Crinoidea", "Class");
+        insertNodeBetween("Biota", "Balanomorpha", "Thecostraca", "Class");
+        insertNodeBetween("Biota", "Pantopoda", "Pycnogonida", "Class");
+        insertNodeBetween("Biota", "Xiphosurida", "Merostomata", "Class");
+        insertNodeBetween("Biota", "Lobata", "Tentaculata", "Class");
+        insertNodeBetween("Biota", "Cestida", "Tentaculata", "Class");
+        insertNodeBetween("Biota", "Platyctenida", "Tentaculata", "Order");
 
-        insertNodeBetween("Root", "Myliobatiformes", "Batoidea", "Infraclass");
-        insertNodeBetween("Root", "Carcharhiniformes", "Selachii", "Infraclass");
-        insertNodeBetween("Root", "Orectolobiformes", "Selachii", "Infraclass");
-        insertNodeBetween("Root", "Batoidea", "Elasmobranchii", "Class");
-        insertNodeBetween("Root", "Selachii", "Elasmobranchii", "Class");
-        insertNodeBetween("Root", "Orectolobiformes", "Elasmobranchii", "Class");
-        insertNodeBetween("Root", "Torpediniformes", "Batoidea", "Infraclass");
-        insertNodeBetween("Root", "Testudines", "Reptilia", "Class");
-        insertNodeBetween("Root", "Serpentes", "Reptilia", "Class");
-        insertNodeBetween("Root", "Cetacea", "Cetartiodactyla", "Order");
-        insertNodeBetween("Root", "Cetartiodactyla", "Mammalia", "Class");
-        insertNodeBetween("Root", "Sirenia", "Mammalia", "Class");
-        insertNodeBetween("Root", "Decapoda", "Malacostraca", "Class");
-        insertNodeBetween("Root", "Stomatopoda", "Malacostraca", "Class");
-        insertNodeBetween("Root", "Amphipoda", "Malacostraca", "Class");
-        insertNodeBetween("Root", "Malacostraca", "Crustacea", "Subphylum");
-        insertNodeBetween("Root", "Mysida", "Crustacea", "Subphylum");
-        insertNodeBetween("Root", "Cirripedia", "Crustacea", "Subphylum");
-        insertNodeBetween("Root", "Thecostraca", "Crustacea", "Subphylum");
-        insertNodeBetween("Root", "Isopoda", "Malacostraca", "Subphylum");
-        insertNodeBetween("Root", "Mysida", "Malacostraca", "Subphylum");
-        insertNodeBetween("Root", "Littorinimorpha", "Caenogastropoda", "Subclass");
-        insertNodeBetween("Root", "Caenogastropoda", "Gastropoda", "Class");
-        insertNodeBetween("Root", "Neogastropoda", "Caenogastropoda", "Class");
-        insertNodeBetween("Root", "Leptothecata", "Hydrozoa", "Class");
-        insertNodeBetween("Root", "Siphonophorae", "Hydrozoa", "Class");
-        insertNodeBetween("Root", "Anthoathecata", "Hydrozoa", "Class");
-        insertNodeBetween("Root", "Zoantharia", "Hexacorallia", "Class");
-        insertNodeBetween("Root", "Actiniaria", "Hexacorallia", "Class");
-        insertNodeBetween("Root", "Ceriantharia", "Hexacorallia", "Class");
-        insertNodeBetween("Root", "Corallimorpharia", "Hexacorallia", "Class");
-        insertNodeBetween("Root", "Scleractinia", "Hexacorallia", "Class");
-        insertNodeBetween("Root", "Antipatharia", "Hexacorallia", "Class");
-        insertNodeBetween("Root", "Tentaculata", "Ctenophora", "Phylum");
-        insertNodeBetween("Root", "Tentaculata", "Ctenophora", "Phylum");
-        insertNodeBetween("Root", "Asteroidea", "Asterozoa", "Subphylum");
-        insertNodeBetween("Root", "Ophiuroidea", "Asterozoa", "Subphylum");
-        insertNodeBetween("Root", "Asterozoa", "Echinodermata", "Phylum");
-        insertNodeBetween("Root", "Crinoidea", "Crinozoa", "Subphylum");
-        insertNodeBetween("Root", "Crinozoa", "Echinodermata", "Phylum");
-        insertNodeBetween("Root", "Echinoidea", "Echinozoa", "Subphylum");
-        insertNodeBetween("Root", "Holothuroidea", "Echinozoa", "Subphylum");
-        insertNodeBetween("Root", "Echinozoa", "Echinodermata", "Phylum");
-        insertNodeBetween("Root", "Ascidiacea", "Tunicata", "Subphylum");
-        insertNodeBetween("Root", "Thaliacea", "Tunicata", "Subphylum");
-        insertNodeBetween("Root", "Gymnolaemata", "Bryozoa", "Phylum");
-        insertNodeBetween("Root", "Demospongiae", "Porifera", "Phylum");
-        insertNodeBetween("Root", "Homoschleromorpha", "Porifera", "Phylum");
-        insertNodeBetween("Root", "Calcarea", "Porifera", "Phylum");
-        insertNodeBetween("Root", "Merostomata", "Chelicerata", "Subphylum");
-        insertNodeBetween("Root", "Pycnogonida", "Chelicerata", "Subphylum");
-        insertNodeBetween("Root", "Pilidiophora", "Nemertea", "Phylum");
 
-        insertNodeBetween("Root", "Teleostei", "Actinopteri", "Superclass");
-        insertNodeBetween("Root", "Actinopteri", "Actinopterygii", "Gigaclass");
-        insertNodeBetween("Root", "Actinopterygii", "Osteichthyes", "Parvphylum");
-        insertNodeBetween("Root", "Elasmobranchii", "Chondrichthyes", "Parvphylum");
-        insertNodeBetween("Root", "Osteichthyes", "Chordata", "Phylum");
-        insertNodeBetween("Root", "Chondrichthyes", "Chordata", "Phylum");
-        insertNodeBetween("Root", "Reptilia", "Chordata", "Phylum");
-        insertNodeBetween("Root", "Mammalia", "Chordata", "Phylum");
-        insertNodeBetween("Root", "Tunicata", "Chordata", "Phylum");
-        insertNodeBetween("Root", "Chordata", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Crustacea", "Arthropoda", "Phylum");
-        insertNodeBetween("Root", "Chelicerata", "Arthropoda", "Phylum");
-        insertNodeBetween("Root", "Arthropoda", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Polycladida", "Platyhelminthes", "Phylum");
-        insertNodeBetween("Root", "Acoela", "Xenacoelomorpha", "Phylum");
-        insertNodeBetween("Root", "Amphinomida", "Annelida", "Phylum");
-        insertNodeBetween("Root", "Platyhelminthes", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Xenacoelomorpha", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Annelida", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Polychaeta", "Annelida", "Kingdom");
-        insertNodeBetween("Root", "Gastropoda", "Mollusca", "Phylum");
-        insertNodeBetween("Root", "Polyplacophora", "Mollusca", "Phylum");
-        insertNodeBetween("Root", "Mollusca", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Cephalopoda", "Mollusca", "Phylum");
-        insertNodeBetween("Root", "Bivalvia", "Mollusca", "Phylum");
-        insertNodeBetween("Root", "Scyphozoa", "Medusozoa", "Subphylum");
-        insertNodeBetween("Root", "Hydrozoa", "Medusozoa", "Subphylum");
-        insertNodeBetween("Root", "Hexacorallia", "Anthozoa", "Subphylum");
-        insertNodeBetween("Root", "Octocorallia", "Anthozoa", "Subphylum");
-        insertNodeBetween("Root", "Medusozoa", "Cnidaria", "Phylum");
-        insertNodeBetween("Root", "Anthozoa", "Cnidaria", "Phylum");
-        insertNodeBetween("Root", "Cnidaria", "Animalia", "Phylum");
-        insertNodeBetween("Root", "Ctenophora", "Animalia", "Class");
-        insertNodeBetween("Root", "Echinodermata", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Bryozoa", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Porifera", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Phoronida", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Nemertea", "Animalia", "Kingdom");
-        insertNodeBetween("Root", "Animalia", "Eukaryota", "Domain");
+        insertNodeBetween("Biota", "Myliobatiformes", "Batoidea", "Infraclass");
+        insertNodeBetween("Biota", "Carcharhiniformes", "Selachii", "Infraclass");
+        insertNodeBetween("Biota", "Orectolobiformes", "Selachii", "Infraclass");
+        insertNodeBetween("Biota", "Batoidea", "Elasmobranchii", "Class");
+        insertNodeBetween("Biota", "Selachii", "Elasmobranchii", "Class");
+        insertNodeBetween("Biota", "Orectolobiformes", "Elasmobranchii", "Class");
+        insertNodeBetween("Biota", "Torpediniformes", "Batoidea", "Infraclass");
+        insertNodeBetween("Biota", "Testudines", "Reptilia", "Class");
+        insertNodeBetween("Biota", "Serpentes", "Reptilia", "Class");
+        insertNodeBetween("Biota", "Cetacea", "Cetartiodactyla", "Order");
+        insertNodeBetween("Biota", "Cetartiodactyla", "Mammalia", "Class");
+        insertNodeBetween("Biota", "Sirenia", "Mammalia", "Class");
+        insertNodeBetween("Biota", "Decapoda", "Malacostraca", "Class");
+        insertNodeBetween("Biota", "Stomatopoda", "Malacostraca", "Class");
+        insertNodeBetween("Biota", "Amphipoda", "Malacostraca", "Class");
+        insertNodeBetween("Biota", "Malacostraca", "Crustacea", "Subphylum");
+        insertNodeBetween("Biota", "Mysida", "Crustacea", "Subphylum");
+        insertNodeBetween("Biota", "Cirripedia", "Crustacea", "Subphylum");
+        insertNodeBetween("Biota", "Thecostraca", "Crustacea", "Subphylum");
+        insertNodeBetween("Biota", "Isopoda", "Malacostraca", "Subphylum");
+        insertNodeBetween("Biota", "Mysida", "Malacostraca", "Subphylum");
+        insertNodeBetween("Biota", "Littorinimorpha", "Caenogastropoda", "Subclass");
+        insertNodeBetween("Biota", "Caenogastropoda incertae sedis", "Caenogastropoda", "Subclass");
+        insertNodeBetween("Biota", "Caenogastropoda", "Gastropoda", "Class");
+        insertNodeBetween("Biota", "Neogastropoda", "Caenogastropoda", "Subclass");
+        insertNodeBetween("Biota", "Leptothecata", "Hydrozoa", "Class");
+        insertNodeBetween("Biota", "Siphonophorae", "Hydrozoa", "Class");
+        insertNodeBetween("Biota", "Anthoathecata", "Hydrozoa", "Class");
+        insertNodeBetween("Biota", "Zoantharia", "Hexacorallia", "Class");
+        insertNodeBetween("Biota", "Actiniaria", "Hexacorallia", "Class");
+        insertNodeBetween("Biota", "Ceriantharia", "Hexacorallia", "Class");
+        insertNodeBetween("Biota", "Corallimorpharia", "Hexacorallia", "Class");
+        insertNodeBetween("Biota", "Scleractinia", "Hexacorallia", "Class");
+        insertNodeBetween("Biota", "Antipatharia", "Hexacorallia", "Class");
+        insertNodeBetween("Biota", "Tentaculata", "Ctenophora", "Phylum");
+        insertNodeBetween("Biota", "Tentaculata", "Ctenophora", "Phylum");
+        insertNodeBetween("Biota", "Asteroidea", "Asterozoa", "Subphylum");
+        insertNodeBetween("Biota", "Ophiuroidea", "Asterozoa", "Subphylum");
+        insertNodeBetween("Biota", "Asterozoa", "Echinodermata", "Phylum");
+        insertNodeBetween("Biota", "Crinoidea", "Crinozoa", "Subphylum");
+        insertNodeBetween("Biota", "Crinozoa", "Echinodermata", "Phylum");
+        insertNodeBetween("Biota", "Echinoidea", "Echinozoa", "Subphylum");
+        insertNodeBetween("Biota", "Holothuroidea", "Echinozoa", "Subphylum");
+        insertNodeBetween("Biota", "Echinozoa", "Echinodermata", "Phylum");
+        insertNodeBetween("Biota", "Ascidiacea", "Tunicata", "Subphylum");
+        insertNodeBetween("Biota", "Thaliacea", "Tunicata", "Subphylum");
+        insertNodeBetween("Biota", "Gymnolaemata", "Bryozoa", "Phylum");
+        insertNodeBetween("Biota", "Heteroscleromorpha", "Demospongiae", "Class");
+        insertNodeBetween("Biota", "Verongimorpha", "Demospongiae", "Class");
+        insertNodeBetween("Biota", "Keratosa", "Demospongiae", "Class");
+        insertNodeBetween("Biota", "Demospongiae", "Porifera", "Phylum");
+        insertNodeBetween("Biota", "Homoschleromorpha", "Porifera", "Phylum");
+        insertNodeBetween("Biota", "Calcarea", "Porifera", "Phylum");
+        insertNodeBetween("Biota", "Merostomata", "Chelicerata", "Subphylum");
+        insertNodeBetween("Biota", "Pycnogonida", "Chelicerata", "Subphylum");
+        insertNodeBetween("Biota", "Pilidiophora", "Nemertea", "Phylum");
 
-        insertNodeBetween("Root", "Ulvophyceae", "Chlorophyta", "Division");
-        insertNodeBetween("Root", "Chlorophyta", "Viridiplantae", "Subkingdom");
-        insertNodeBetween("Root", "Viridiplantae", "Plantae", "Kingdom");
-        insertNodeBetween("Root", "Plantae", "Eukaryota", "Domain");
-        insertNodeBetween("Root", "Florideophyceae", "Rhodophyta", "Division");
-        insertNodeBetween("Root", "Rhodophyta", "Biliphyta", "Subkingdom");
-        insertNodeBetween("Root", "Biliphyta", "Plantae", "Kingdom");
-        insertNodeBetween("Root", "Phaeophyceae", "Ochrophyta", "Phylum");
-        insertNodeBetween("Root", "Ochrophyta", "Chromista", "Kingdom");
-        insertNodeBetween("Root", "Chromista", "Eukaryota", "Domain");
+        insertNodeBetween("Biota", "Teleostei", "Actinopteri", "Superclass");
+        insertNodeBetween("Biota", "Actinopteri", "Actinopterygii", "Gigaclass");
+        insertNodeBetween("Biota", "Actinopterygii", "Osteichthyes", "Parvphylum");
+        insertNodeBetween("Biota", "Elasmobranchii", "Chondrichthyes", "Parvphylum");
+        insertNodeBetween("Biota", "Osteichthyes", "Chordata", "Phylum");
+        insertNodeBetween("Biota", "Chondrichthyes", "Chordata", "Phylum");
+        insertNodeBetween("Biota", "Reptilia", "Chordata", "Phylum");
+        insertNodeBetween("Biota", "Mammalia", "Chordata", "Phylum");
+        insertNodeBetween("Biota", "Tunicata", "Chordata", "Phylum");
+        insertNodeBetween("Biota", "Chordata", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Crustacea", "Arthropoda", "Phylum");
+        insertNodeBetween("Biota", "Chelicerata", "Arthropoda", "Phylum");
+        insertNodeBetween("Biota", "Arthropoda", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Polycladida", "Platyhelminthes", "Phylum");
+        insertNodeBetween("Biota", "Acoela", "Xenacoelomorpha", "Phylum");
+        insertNodeBetween("Biota", "Amphinomida", "Annelida", "Phylum");
+        insertNodeBetween("Biota", "Platyhelminthes", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Xenacoelomorpha", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Annelida", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Polychaeta", "Annelida", "Kingdom");
+        insertNodeBetween("Biota", "Gastropoda", "Mollusca", "Phylum");
+        insertNodeBetween("Biota", "Polyplacophora", "Mollusca", "Phylum");
+        insertNodeBetween("Biota", "Mollusca", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Cephalopoda", "Mollusca", "Phylum");
+        insertNodeBetween("Biota", "Bivalvia", "Mollusca", "Phylum");
+        insertNodeBetween("Biota", "Scyphozoa", "Medusozoa", "Subphylum");
+        insertNodeBetween("Biota", "Hydrozoa", "Medusozoa", "Subphylum");
+        insertNodeBetween("Biota", "Hexacorallia", "Anthozoa", "Subphylum");
+        insertNodeBetween("Biota", "Octocorallia", "Anthozoa", "Subphylum");
+        insertNodeBetween("Biota", "Medusozoa", "Cnidaria", "Phylum");
+        insertNodeBetween("Biota", "Anthozoa", "Cnidaria", "Phylum");
+        insertNodeBetween("Biota", "Cnidaria", "Animalia", "Phylum");
+        insertNodeBetween("Biota", "Ctenophora", "Animalia", "Class");
+        insertNodeBetween("Biota", "Echinodermata", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Bryozoa", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Porifera", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Phoronida", "Animalia", "Kingdom");
+        insertNodeBetween("Biota", "Nemertea", "Animalia", "Kingdom");
+        //insertNodeBetween("Biota", "Animalia", "Eukaryota", "Domain");
+
+        insertNodeBetween("Biota", "Ulvophyceae", "Chlorophyta", "Division");
+        insertNodeBetween("Biota", "Chlorophyta", "Viridiplantae", "Subkingdom");
+        insertNodeBetween("Biota", "Viridiplantae", "Plantae", "Kingdom");
+        //insertNodeBetween("Biota", "Plantae", "Eukaryota", "Domain");
+        insertNodeBetween("Biota", "Florideophyceae", "Rhodophyta", "Division");
+        insertNodeBetween("Biota", "Rhodophyta", "Biliphyta", "Subkingdom");
+        insertNodeBetween("Biota", "Biliphyta", "Plantae", "Kingdom");
+        insertNodeBetween("Biota", "Phaeophyceae", "Ochrophyta", "Phylum");
+        insertNodeBetween("Biota", "Ochrophyta", "Chromista", "Kingdom");
+        //insertNodeBetween("Biota", "Chromista", "Eukaryota", "Domain");
 
         insertNodeBetween("Cladobranchia", "Flabellinidae", "Aeolidioidea", "Superfamily");
         insertNodeBetween("Cladobranchia", "Facelinidae", "Aeolidioidea", "Superfamily");
@@ -565,9 +631,38 @@ public class SpeciesTree {
         insertNodeBetween("Sepiida", "Sepiadariidae", "Sepioloidea", "Superfamily");
         insertNodeBetween("Sepiida", "Sepiolidae", "Sepioloidea", "Superfamily");
         insertNodeBetween("Sepiida", "Sepiidae", "Sepioidea", "Superfamily");
+        insertNodeBetween("Anomura", "Diogenidae", "Paguroidea", "Superfamily");
+        insertNodeBetween("Anomura", "Paguridae", "Paguroidea", "Superfamily");
+        insertNodeBetween("Anomura", "Porcellanidae", "Galatheoidea", "Superfamily");
+
+        breadthFirstSearch(root, "Paguroidea").getValue().setCategory("Hermit Crab");
+        breadthFirstSearch(root, "Demospongiae").getValue().setCategory("Common Sponges");
+        breadthFirstSearch(root, "Porifera").getValue().setCategory("Sponges");
+        breadthFirstSearch(root, "Batoidea").getValue().setCategory("Rays");
+        breadthFirstSearch(root, "Crustacea").getValue().setCategory("Crustaceans");
+
     }
 
-    public TreeNode<Taxon> buildTaxonomy() {
+
+    public void printNodeJson(TreeNode<Taxon> node, String parentName, StringBuilder jsonOutput ) {
+        JSONObject obj = new JSONObject();
+        obj.put("name", node.getValue().getName());
+        obj.put("rank", node.getValue().getRank());
+        obj.put("category", node.getValue().getCategory());
+        obj.put("parent", parentName);
+        jsonOutput.append(obj.toString()).append("\n");
+
+        for (TreeNode<Taxon> child : node.getChildren()) {
+            if(child.getValue() instanceof Species
+            //|| child.getValue().getRank().equals("Subfamily")
+            || child.getValue().getRank().equals("Genus")) {
+                continue;
+            }
+            printNodeJson(child, node.getValue().getName(), jsonOutput);
+        }
+    }
+
+    public TreeNode<Taxon> buildTaxonomy() throws Exception {
         System.setProperty("org.slf4j.simpleLogger.log.org.mongodb.driver", "warn");
 
         MongoDatabase db = null;
@@ -655,6 +750,29 @@ public class SpeciesTree {
         return leaves;
     }
 
+    public List<Taxon> getPathToSpecies(TreeNode<Taxon> node, Species species) {
+        List<Taxon> path = new ArrayList<>();
+        if(findPathHelper(node, species, path)) {
+            return path;
+        }
+        return Collections.emptyList(); // Not found
+    }
+
+    private boolean findPathHelper(TreeNode<Taxon> node, Species species, List<Taxon> path) {
+        path.add(node.getValue());
+        if(node.getValue() instanceof Species sp && sp.equals(species)) {
+            return true;
+        }
+        for(TreeNode<Taxon> child : node.getChildren()) {
+            if(findPathHelper(child, species, path)) {
+                return true;
+            }
+        }
+        path.removeLast();
+        return false;
+    }
+
+
     public List<String> getAllSpeciesSciNAmes(TreeNode<Taxon> node) {
         List<String> leaves = new ArrayList<>();
         if(node.getChildren().isEmpty()) {
@@ -671,8 +789,59 @@ public class SpeciesTree {
     }
 
     void addAphiaIDB() {
+        try(BufferedReader br = new BufferedReader(new FileReader("worms.txt"))) {
+            String line;
+            while((line = br.readLine()) != null) {
+                String[] fields = line.split("\t");
+                //System.out.println("Adding AphiaID " + fields[1] + " to " + fields[0]);
+                Species sp = findSpecies(root, fields[0]);
+                sp.setAphiaID(Integer.parseInt(fields[1]));
+                List<Taxon> list = getPathToSpecies(root, sp);
+                sp.path = list;
+                //list.forEach(t -> System.out.print(t.getName() + "[" + t.getRank() + "] > "));
+                //System.out.println();
 
+                List<Taxon> result = new ArrayList<>();
+                JSONObject json = new JSONObject(fields[3]);
+                collectNames(json, result);
+                //result.forEach(t -> System.out.print(t.getName() + "[}" + t.getRank() + "] - "));
+                //System.out.println();
+
+                //compareTaxonLists(sp.getName(), list, result);
+                compareTaxonLists(sp.getName(), result, list);
+
+            }
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
     }
+
+    public void compareTaxonLists(String id, List<Taxon> list1, List<Taxon> list2) {
+
+        for (int i = 2; i < list1.size(); i++) {
+            String name =list1.get(i).getSciName();
+            String rank =list1.get(i).getRank();
+
+            var match = list2.stream().filter(t -> t.getSciName().startsWith(name) && t.getRank().equals(rank)).findFirst();
+            if(match.isEmpty()) {
+                System.out.println(id + "--> No match for: " + name + " (" + rank + ")");
+            }
+        }
+    }
+
+    private void collectNames(JSONObject node, List<Taxon> result) {
+        if(node.has("scientificname")) {
+            result.add(new Taxon(node.getString("scientificname"), node.getString("rank")));
+        }
+        if(node.has("child")) {
+            Object child = node.get("child");
+
+            if(child instanceof JSONObject jsonChild) {
+                collectNames(jsonChild, result);
+            }
+        }
+    }
+
 
     void worms() throws IOException {
 
@@ -688,8 +857,8 @@ public class SpeciesTree {
                 sb.append(sp).append("\t").append(id).append("\t");
                 String rec = getRestReply("https://www.marinespecies.org/rest/AphiaRecordByAphiaID/" + id);
                 JSONObject json = new JSONObject(rec);
-                String  status = json.get("status").toString();
-                System.out.print(status  + "\t");
+                String status = json.get("status").toString();
+                System.out.print(status + "\t");
                 sb.append(status).append("\t");
                 String taxon = getRestReply("https://www.marinespecies.org/rest/AphiaClassificationByAphiaID/" + id);
                 System.out.println(taxon);
@@ -699,7 +868,7 @@ public class SpeciesTree {
                 System.out.println("Species: " + sp + " UNKNOWN");
             }
         });
-        try (FileWriter writer = new FileWriter("/tmp/worms.txt")) {
+        try(FileWriter writer = new FileWriter("/tmp/worms.txt")) {
             writer.write(sb.toString());
         }
     }
@@ -709,14 +878,15 @@ public class SpeciesTree {
 
         SpeciesTree speciesTree = new SpeciesTree();
         speciesTree.buildTaxonomy();
+        speciesTree.addAphiaIDB();
         // speciesTree.printTree(speciesTree.root, "");
 
         System.out.println();
         System.out.println();
         speciesTree.sortTreeByName(speciesTree.root);
-        String tree = speciesTree.displayTree(speciesTree.depthFirstSearch(speciesTree.root, "Root"));
+        String tree = speciesTree.displayTree(speciesTree.depthFirstSearch(speciesTree.root, "Biota"));
         System.out.println(tree);
-        try (FileWriter writer = new FileWriter("/tmp/taxonomy_tree.txt")) {
+        try(FileWriter writer = new FileWriter("/tmp/taxonomy_tree.txt")) {
             writer.write(tree);
         }
 
@@ -726,6 +896,12 @@ public class SpeciesTree {
         leafNames.forEach(System.out::println);
         System.out.println();
         System.out.println();
+
+        StringBuilder out = new StringBuilder();
+        speciesTree.printNodeJson(speciesTree.root, null, out);
+        try(FileWriter writer = new FileWriter("/tmp/taxonomy_nodes.json")) {
+            writer.write(out.toString());
+        }
 
         System.exit(0);
 
