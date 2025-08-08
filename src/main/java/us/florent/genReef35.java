@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -69,16 +68,12 @@ public class genReef35 {
         }
     }
 
-    record Category(String id, String cat, String altType, String altCat) {
-    }
-
     protected record photo(int id, String location, String type, String comment) {
     }
 
-    protected static class genusClassifaction {
+    protected class genusClassifaction {
 
         private final Map<String, Genus> genusFam = new HashMap<>();
-        private final Map<String, Category> famCat = new HashMap<>();
         private final Map<String, String> CatSpeeciesType = new HashMap<>();
         private final Map<String, List<String>> groups = new HashMap<>();
 
@@ -102,28 +97,8 @@ public class genReef35 {
             return CatSpeeciesType.get(cat);
         }
 
-        void addCat(String fam, String subFam, String cat, String altType, String altCat) {
-            String id;
-            if(subFam.isBlank())
-                id = fam;
-            else
-                id = fam + "/" + subFam;
-            famCat.put(id, new Category(id, cat, altType, altCat));
-        }
-
-        List<String> getFamily(String cat) {
-            List<String> ret;
-            ret = famCat.values().stream().filter(x -> x.cat().equals(cat)).sorted(Comparator.comparing(Category::altCat).thenComparing(Category::id))
-                    .map(x -> x.id).collect(Collectors.toList());
-            return ret;
-        }
-
         Set<String> getAllCat() {
-            return famCat.values().stream().map(v -> v.cat).collect(Collectors.toCollection(TreeSet::new));
-        }
-
-        List<String> getGenus(String family) {
-            return genusFam.values().stream().filter(x -> x.fullFamily().equals(family)).sorted(Comparator.comparing(Genus::id)).map(x -> x.id).collect(Collectors.toList());
+            return speciesTree.getAllCategories();
         }
 
         String getFamilyForGenus(String genus) {
@@ -134,27 +109,12 @@ public class genReef35 {
             return genusFam.get(genus).fullFamily();
         }
 
+        @Deprecated
         String[] getFamilySplitForGenus(String genus) {
             String[] ret = new String[2];
             ret[0] = genusFam.get(genus).famname();
             ret[1] = genusFam.get(genus).subname();
             return ret;
-        }
-
-        String[] getAltCatForGenus(String genus) {
-            var ret = new String[2];
-            ret[0] = famCat.get(getFamilyForGenus(genus)).altCat();
-            ret[1] = famCat.get(getFamilyForGenus(genus)).altType();
-            return ret;
-        }
-
-        String getCatForGenus(String genus) {
-            try {
-                return famCat.get(getFamilyForGenus(genus)).cat;
-            } catch(NullPointerException e) {
-                System.out.println("MISSING CAT FOR GENUS: " + genus);
-                throw e;
-            }
         }
     }
 
@@ -225,23 +185,18 @@ public class genReef35 {
             return species.get(id);
         }
 
-        String getFamily(String id) {
-            String fam = genus_classification.getFamilyForGenus(species.get(id).genus());
-            return fam.startsWith("_") ? null : fam;
-        }
-
-        String[] getAltCat(String id) {
-            return genus_classification.getAltCatForGenus(species.get(id).genus());
-        }
-
         String getCat(String id) {
-            return genus_classification.getCatForGenus(species.get(id).genus());
+            String ret = speciesTree.getLastCategoryForSpeciesId(id);
+            if(ret == null) {
+                System.out.println("MISSING CAT FOR SPECIES: " + id);
+                return "Unknow";
+            }
+            return ret;
         }
 
         List<String> getSpeciesNameFromCat(String category) {
-            return genus_classification.getFamily(category).stream().
-                    flatMap(s -> genus_classification.getGenus(s).stream()).toList()
-                    .stream().flatMap(s -> species_collection.getSpeciesFromGenus(s).stream()).collect(Collectors.toList());
+            return speciesTree.getAllSpeciesBelowCategory(category).stream().map(sp -> sp.getOrgGenus()).distinct()
+                    .flatMap(s -> species_collection.getSpeciesFromGenus(s).stream()).collect(Collectors.toList());
         }
 
         List<Species> getSpeciesFromCat(String category) {
@@ -298,11 +253,20 @@ public class genReef35 {
             return cat.replace("Grunts", "Grunts/Sweetlips");
         }
         if(reefRef == 2) {
-            return cat.replace("Grunts", "Sweetlips");
+            return cat.replace("Combtooth Blennies", "Blennies");
         }
         return cat;
     }
 
+    public void createTaxonTree() throws Exception {
+        speciesTree = new SpeciesTree();
+        try {
+            speciesTree.buildTaxonomy();
+        } catch(Exception ex) {
+            java.util.logging.Logger.getLogger(genReef35.class.getName()).log(Level.SEVERE, "Cannot Build Taxon Tree", ex);
+            throw ex;
+        }
+    }
 
     public void createSite(String path, boolean analytics) throws Exception {
         try {
@@ -321,13 +285,7 @@ public class genReef35 {
             String[] hearderPolynesia = {"banner2"};
 
             // Get taxon tree
-            speciesTree = new SpeciesTree();
-            try {
-                speciesTree.buildTaxonomy();
-            } catch(Exception ex) {
-                java.util.logging.Logger.getLogger(genReef35.class.getName()).log(Level.SEVERE, "Cannot Build Taxon Tree", ex);
-                throw ex;
-            }
+            createTaxonTree();
 
             this.analytics = analytics;
             System.out.println("================= Site " + path + " =================");
@@ -488,7 +446,7 @@ public class genReef35 {
                                 group = new ArrayList<>();
                                 group.add(name.toString());
                             }
-                            group.stream().map(g -> overrideCat(g, reefRef)).forEachOrdered(cat -> {
+                            group.stream().forEachOrdered(cat -> {
                                 _page.group.put(cat, overrideCat(name.toString(), reefRef));
                                 genus_classification.addCatSpeciesType(cat, catType);
                                 List<String> sl = species_collection.getSpeciesNameFromCat(cat);
@@ -513,27 +471,22 @@ public class genReef35 {
 
     private void loadDataBase(MongoDatabase db, int reefRef) {
         genus_classification = new genusClassifaction();
-        MongoCollection<Document> collection = db.getCollection("genus");
-        try(MongoCursor<Document> cur = collection.find().iterator()) {
-            while(cur.hasNext()) {
-                var doc = cur.next();
-                var family = new ArrayList<>(doc.values());
-                genus_classification.add(family.get(1).toString(), family.get(2).toString(), family.get(3).toString());
-                //System.out.printf("%s: %s,%s%n", family.get(1).toString(), family.get(2), family.get(3));
+
+        List<SpeciesTree.Triple<String, String, String>> genus =  speciesTree.getAllGenusWithParents();
+        for(var g : genus) {
+            String family = g.first();
+            String subfamily = g.second();
+            String genusName = g.third();
+            if(genus_classification.getGroup(genusName) == null) {
+               genus_classification.add(genusName, family, subfamily);
             }
-        }
-        collection = db.getCollection("categories");
-        try(MongoCursor<Document> cur = collection.find().iterator()) {
-            while(cur.hasNext()) {
-                var doc = cur.next();
-                var cat = new ArrayList<>(doc.values());
-                genus_classification.addCat(cat.get(1).toString(), cat.get(2).toString(), overrideCat(cat.get(3).toString(), reefRef), cat.get(4).toString(), cat.get(5).toString());
-                //System.out.printf("%s/%s: %s,%s, %s%n", cat.get(1).toString(), cat.get(2).toString(), cat.get(3).toString(), cat.get(4).toString(), cat.get(5).toString());
+            else {
+                System.out.println("Duplicate genus: " + genusName + " - " + family + " - " + subfamily);
             }
         }
 
         species_collection = new speciesCollection();
-        collection = db.getCollection("species");
+        MongoCollection<Document> collection = db.getCollection("species");
         try(MongoCursor<Document> cur = collection.find().iterator()) {
             while(cur.hasNext()) {
                 var doc = cur.next();
@@ -792,7 +745,7 @@ public class genReef35 {
                     subdir = cat;
                     cat_reef.append("\"").append(subdir).append("\",");
                     ref_reef.append(0).append(",");
-                }
+            }
             }
         }
         ref_reef.append(count1);
@@ -878,8 +831,10 @@ public class genReef35 {
         }
         if(!sp.sciName().isEmpty()) {
             outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName() + "</span>");
+            outString = outString.replace("__SCINAME2__", sp.sciName());
         } else {
             outString = outString.replace("__SCINAME__", "");
+            outString = outString.replace("__SCINAME2__", "");
         }
         if(!sp.synonyms.isBlank()) {
             outString = outString.replace("__ASCINAME__", "<span class=\"details\">Synonyms: </span><span class=\"sntitle2\">" + sp.synonyms + "</span>");
@@ -887,49 +842,25 @@ public class genReef35 {
             outString = outString.replace("__ASCINAME__", "");
         }
 
-        String family = species_collection.getFamily(sp.id);
-        String f = "";
-        var altCat = "";
         var cat = species_collection.getCat(sp.id());
-        if(family != null) {
-            f = family.split("/")[0];
-            //catType = "Family";
-        } //else {
-        var c = species_collection.getAltCat(sp.id());
-        altCat = c[0];
-        String catType = c[1];
-        //}
 
         outString = outString.replace("__TITLE__", sp.name + " - " + sp.sciName + " - " + cat + " - " + sp.aka);
 
-        //if(true) {   //!f.isEmpty()) {
-        outString = outString.replace("__FAM__", "<span class=\"details\">" + "Family" + ": </span><span class=\"sntitle\">" + f + "</span>");
-        //if(!altCat.isBlank()) {
         StringBuilder taxonomy = new StringBuilder();
-        List<String> remove = Arrays.asList("Genus", "Domain", "Genus", "Species", "Kingdom");
+        List<String> remove = Arrays.asList("Domain", "Species", "Kingdom");
         String name = sp.sciName();
         if(name.isEmpty()) {
             name = sp.name();
         }
+        StringBuilder ident = new StringBuilder();
         speciesTree.getPathToSpecies(name).stream().filter(t -> !t.getName().equals("Unknown")).filter(t -> !remove.contains(t.getRank())).forEach(t -> {
-            taxonomy.append("<div class=\"infodetails\"><span class=\"details\">").append(t.getRank()).append(": </span><span class=\"sntitle\">").append(t.getName()).append("</span></div>").append("\n");
+            taxonomy.append("<div class=\"infodetails\"><span class=\"sntitle\">").append(ident).append(t.getName()).append("</span><span class=\"details\"> (").append(t.getRank()).append(")</span></div>").append("\n");
+            if(ident.isEmpty())
+                ident.append("&boxur;");
+            else
+                ident.insert(0,"&nbsp;");
         });
-        //outString = outString.replace("__HIGHER__", "<span class=\"details\">" + catType + ": </span><span class=\"sntitle\">" + altCat + "</span>");
         outString = outString.replace("__HIGHER__", taxonomy.toString());
-        // }
-        // else {
-        //   outString = outString.replace("__HIGHER__", "");
-        //}
-        // } else {
-        //    outString = outString.replace("__FAM__", "<span class=\"details\">" + catType + ": </span><span class=\"sntitle\">" + altCat + "</span>");
-        //    outString = outString.replace("__HIGHER__", "");
-        //}
-        if(family != null && family.contains("/")) {
-            f = family.split("/")[1];
-            outString = outString.replace("__SUBFAM__", "<span class=\"details\">" + "Subfamily" + ": </span><span class=\"sntitle\">" + f + "</span>");
-        } else {
-            outString = outString.replace("__SUBFAM__", "");
-        }
 
         outString = outString.replace("__CAT__", cat);
         outString = outString.replace("__CAT1__", cat.replace(" ", "_"));
@@ -1074,8 +1005,10 @@ public class genReef35 {
 
         if(!sp.sciName.isEmpty()) {
             outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName + "</span>");
+            outString = outString.replace("__SCINAME2__", sp.sciName());
         } else {
             outString = outString.replace("__SCINAME__", "");
+            outString = outString.replace("__SCINAME2__", "");
         }
 
         var dist = String.join(", ", sp.dist) + (sp.endemic ? " (Endemic)" : "");
@@ -1307,8 +1240,8 @@ public class genReef35 {
                 if(!fam[1].isEmpty())
                     html_frag.append("<p class=\"label1\">Subfamily: <span class=\"label1\">").append(fam[1]).append("</span></p>\n");
             } else {
-                String[] c = genus_classification.getAltCatForGenus(sp_list.getFirst().genus());
-                html_frag.append("<p class=\"label1\">").append(c[1]).append(": <span class=\"label1\">").append(c[0]).append("</span></p>\n");
+                //String[] c = genus_classification.getAltCatForGenus(sp_list.getFirst().genus());
+                html_frag.append("<p class=\"label1\">").append(": <span class=\"label1\">").append("</span></p>\n");
             }
             html_frag.append("<p class=\"label2\">").append(sp_list.size()).append(" Species</p>\n");
             html_frag.append("</div></div>\n");
@@ -1381,6 +1314,10 @@ public class genReef35 {
 
         int i = 0;
         for(var sp : g.species) {
+            if(sp == null) {
+                System.out.println("Null species in " + g.name);
+                continue;
+            }
             int num = sp.getNameCount();
             for(int j = 0; j < num; j++) {
                 img_reef.append("\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().get(j)).append(".jpg\",");

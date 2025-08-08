@@ -102,6 +102,11 @@ public class speciesEdit extends javax.swing.JFrame {
 
     private void initDB() throws IOException {
         //genReef35 reef = new genReef35();
+        try {
+            db.createTaxonTree();
+        } catch(Exception e) {
+            throw new RuntimeException(e);
+        }
         db.basepathIndexAll = "/home/fc/web/reef4";
         db.buildAllData("reeflist4", 0);
 

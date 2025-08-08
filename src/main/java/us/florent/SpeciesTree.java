@@ -1,7 +1,6 @@
 package us.florent;
 
 import com.mongodb.client.AggregateIterable;
-import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -24,6 +23,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static java.util.Arrays.asList;
@@ -31,15 +32,19 @@ import static java.util.Arrays.asList;
 public class SpeciesTree {
 
 
-    List<String> ranks = Arrays.asList("Domain", "Kingdom", "Subkingdom", "Division", "Phylum", "Subphylum", "Parvphylum", "Gigaclass", "Superclass", "Class", "Subclass",
+    List<String> ranks = Arrays.asList("Domain", "Kingdom", "Subkingdom", "Division", "Phylum", "Subphylum", "Parvphylum", "Gigaclass", "Megaclass", "Superclass", "Class", "Subclass",
             "Infraclass", "Subterclass", "Superorder", "Order", "Suborder", "Infraorder", "Superfamily", "Family", "Subfamily", "Genus", "Species");
+
+    List<TreeNode<Taxon>> families;
 
     public static class Taxon {
         private String name;
         private final String rank;
         boolean wasInserted = false;
         private String category = null;
+        private String orgName = null;
         int AphiaID;
+
 
         public int getAphiaID() {
             return AphiaID;
@@ -68,6 +73,13 @@ public class SpeciesTree {
             return name;
         }
 
+        public String getNameOrOrgName() {
+            if(orgName != null && !orgName.isEmpty()) {
+                return orgName;
+            }
+            return name;
+        }
+
         public void setName(String name) {
             this.name = name;
         }
@@ -90,12 +102,29 @@ public class SpeciesTree {
 
         String id = null;
         String genus = null;
+        String orgGenus = null; // Original genus name, used when genus is "Unknown"
         String epithet = null;
         List<Taxon> path;
 
         public Species(String name, String rank) {
             super(name, rank);
         }
+
+        public String getOrgGenus() {
+            if(orgGenus == null || orgGenus.isEmpty()) {
+                return genus;
+            }
+            return orgGenus;
+        }
+
+        public String getId() {
+            return id;
+        }
+
+        public void setId(String id) {
+            this.id = id;
+        }
+
 
         @Override
         public String getSortName() {
@@ -149,6 +178,9 @@ public class SpeciesTree {
         return null; // Not found
     }
 
+    public TreeNode<Taxon> depthFirstSearch(String targetName) {
+        return depthFirstSearch(root, targetName);
+    }
 
     public TreeNode<Taxon> depthFirstSearch(TreeNode<Taxon> node, String targetName) {
         if(node == null) return null;
@@ -172,6 +204,8 @@ public class SpeciesTree {
                 return sp;
             if(sp.getName().equals(name))
                 return sp;
+            if(sp.getId().equals(name))
+                return sp;
         }
 
         for(TreeNode<Taxon> child : node.getChildren()) {
@@ -183,7 +217,7 @@ public class SpeciesTree {
         return null; // Not found
     }
 
-    public Species addSpecies(String genus, String epithet, String speciesName) {
+    public Species addSpecies(String id, String genus, String epithet, String speciesName) {
         TreeNode<Taxon> genusNode = depthFirstSearch(root, genus);
         if(genusNode == null) {
             return null; // Genus not found
@@ -200,9 +234,12 @@ public class SpeciesTree {
         Species sp = new Species(speciesName, "Species");
         sp.genus = genus;
         sp.epithet = epithet;
+        sp.id = id;
         TreeNode<Taxon> speciesNode = new TreeNode<>(sp);
         if(epithet.equals("Unknown")) {
+            sp.orgGenus = sp.genus;
             sp.genus = "Unknown";
+            genusNode.getValue().orgName = genusNode.getValue().getName();
             genusNode.getValue().setName("Unknown");
         }
         genusNode.addChild(speciesNode);
@@ -271,6 +308,7 @@ public class SpeciesTree {
     public void sortTreeByName(TreeNode<Taxon> node) {
         if(node == null) return;
         if(node.getValue().getName().startsWith("_")) {
+            node.getValue().orgName = node.getValue().getName();
             node.getValue().setName("Unknown");
         }
         node.getChildren().sort((a, b) -> a.getValue().getSortName().compareToIgnoreCase(b.getValue().getSortName()));
@@ -323,7 +361,7 @@ public class SpeciesTree {
                 if(parentNode != null) {
                     parentNode.addChild(node);
                 } else {
-                    System.out.println("Parent not found: " + parent);
+                    System.out.println("Parent not found: " + parent + " for " + name);
                     throw new Exception("Parent not found: " + parent);
                 }
             } else {
@@ -331,56 +369,165 @@ public class SpeciesTree {
             }
         }
 
-        // categories and taxon validation
-        collection = db.getCollection("categories");
-        for(Document doc : collection.find()) {
-            String alttype = doc.get("alttype").toString();
-            String name = doc.get("altclassification").toString();
-            String family = doc.get("family").toString();
-            String cat = doc.get("category").toString();
-            String subfamily = doc.get("subfamily").toString();
-            TreeNode<Taxon> familyNode = depthFirstSearch(root, family);
-            if(!subfamily.isEmpty()) {
-                TreeNode<Taxon> subfamilyNode = depthFirstSearch(root, subfamily);
-                if(!subfamilyNode.getValue().getCategory().equals(cat)) {
-                    throw new Exception("Subfamily category mismatch: " + subfamilyNode.getValue().getCategory() + " != " + cat);
-                }
-
-            } else {
-                if(!familyNode.getValue().getCategory().equals(cat)) {
-                    throw new Exception("Family category mismatch: " + familyNode.getValue().getCategory() + " != " + cat);
-                }
-
-            }
-        }
-
-        collection = db.getCollection("genus");
-        for(Document doc : collection.find()) {
-            if(doc.get("subfamily").toString().isEmpty()) {
-                String family = doc.get("family").toString();
-                String genus = doc.get("genus").toString();
-                TreeNode<Taxon> genusNode = addLeaf(family, genus, "Genus");
-            } else {
-                String subfamily = doc.get("subfamily").toString();
-                String genus = doc.get("genus").toString();
-                TreeNode<Taxon> genusNode = addLeaf(subfamily, genus, "Genus");
-            }
-        }
+       // MongoCollection<Document> collectionzz = db.getCollection("taxon");
+//        collection = db.getCollection("genus");
+//        for(Document doc : collection.find()) {
+//            if(doc.get("subfamily").toString().isEmpty()) {
+//                String family = doc.get("family").toString();
+//                String genus = doc.get("genus").toString();
+//                TreeNode<Taxon> genusNode = addLeaf(family, genus, "Genus");
+//
+//            } else {
+//                String subfamily = doc.get("subfamily").toString();
+//                String genus = doc.get("genus").toString();
+//                TreeNode<Taxon> genusNode = addLeaf(subfamily, genus, "Genus");
+////                String zz = String.format("{\"parent\": \"%s\",\"name\": \"%s\",\"rank\": \"Genus\"}\n", subfamily, genus);
+////                System.out.print(zz);
+////                collectionzz.insertOne( Document.parse(zz));
+//            }
+//        }
 
         collection = db.getCollection("species");
         for(Document doc : collection.find()) {
             String[] sciName = doc.get("sciName").toString().split(" ", 2);
             if(sciName.length < 2) {
-                System.out.println("Invalid scientific name: " + doc.get("Name").toString());
+                System.out.println("Invalid scientific name: " + doc.get("id").toString() + " - " + doc.get("Name").toString());
                 //addSpecies("Unknown", "Unknown", doc.get("Name").toString());
                 sciName = new String[]{doc.get("id").toString(), "Unknown"}; // Default to Unknown if invalid
                 // continue; // Skip invalid names
             }
-            addSpecies(sciName[0], sciName[1], doc.get("Name").toString());
+            addSpecies(doc.get("id").toString(), sciName[0], sciName[1], doc.get("Name").toString());
         }
 
-        sortTreeByName(depthFirstSearch(root, "Animalia"));
+        sortTreeByName(depthFirstSearch(root, "Biota"));
 
+        families = getAllFamilyNodes(root);
+
+    }
+
+    public String getLastCategoryForSpeciesId(String speciesId) {
+        Species sp = findSpecies(root, speciesId);
+        if (sp == null)
+            return null;
+        List<Taxon> path = getPathToSpecies(root, sp);
+        String lastCategory = null;
+        for (Taxon taxon : path) {
+            if (taxon.getCategory() != null) {
+                lastCategory = taxon.getCategory();
+            }
+        }
+        return lastCategory;
+    }
+
+    public String getCategoryForSpeciesId(String speciesId) {
+        String category = null;
+        String subCategory = null;
+        for(TreeNode<Taxon> family : families) {
+            category = family.getValue().getCategory();
+            for(TreeNode<Taxon> onedown : family.getChildren()) {
+                subCategory = onedown.getValue().getCategory();
+                for(TreeNode<Taxon> twodown : onedown.getChildren()) {
+                    if(twodown.getValue() instanceof Species sp && sp.id.equals(speciesId)) {
+                        return category;
+                    }
+                    for(TreeNode<Taxon> threedown : twodown.getChildren()) {
+                        if(threedown.getValue() instanceof Species sp && sp.id.equals(speciesId)) {
+                            if(subCategory != null) {
+                                return subCategory;
+                            } else {
+                                return category;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null; // No category found
+    }
+
+    public Set<String> getAllCategories() {
+        Set<String> categories = new TreeSet<>();
+        collectCategories(root, categories);
+        return categories;
+    }
+
+    private void collectCategories(TreeNode<Taxon> node, Set<String> categories) {
+        if (node.getValue().getCategory() != null) {
+            categories.add(node.getValue().getCategory());
+        }
+        for (TreeNode<Taxon> child : node.getChildren()) {
+            collectCategories(child, categories);
+        }
+    }
+
+    public List<TreeNode<Taxon>> getAllFamilyNodes(TreeNode<Taxon> node) {
+        List<TreeNode<Taxon>> families = new ArrayList<>();
+        if (node.getValue().getRank().equals("Family")) {
+            families.add(node);
+        }
+        for (TreeNode<Taxon> child : node.getChildren()) {
+            families.addAll(getAllFamilyNodes(child));
+        }
+        return families;
+    }
+
+    public List<Species> getAllSpeciesBelowCategory(String category) {
+        List<Species> speciesList = new ArrayList<>();
+        collectSpeciesBelowCategory(root, category, speciesList);
+        return speciesList;
+    }
+
+    private void collectSpeciesBelowCategory(TreeNode<Taxon> node, String category, List<Species> speciesList) {
+        if (category.equals(node.getValue().getCategory())) {
+            collectAllSpecies(node, speciesList, category, true);
+        } else {
+            for (TreeNode<Taxon> child : node.getChildren()) {
+                collectSpeciesBelowCategory(child, category, speciesList);
+            }
+        }
+    }
+
+    private void collectAllSpecies(TreeNode<Taxon> node, List<Species> speciesList, String category, boolean found) {
+        if(node.getValue() instanceof Species sp) {
+            if(found)
+                speciesList.add(sp);
+        }
+        for(TreeNode<Taxon> child : node.getChildren()) {
+            if(child.getValue().getCategory() != null) {
+                if(!child.getValue().getCategory().equals(category)) {
+                    collectSpeciesBelowCategory(child, category, speciesList);
+                    continue;
+                }
+                    //found = false;
+            }
+            collectAllSpecies(child, speciesList, category, found);
+            found = true;
+        }
+    }
+
+    public List<String> getFamSubfamByCategory(String category) {
+        List<String> familiesByCategory = new ArrayList<>();
+        for(TreeNode<Taxon> family : families) {
+            if(Objects.nonNull(family.getValue().getCategory()) && family.getValue().getCategory().equals(category)) {
+                if(family.getValue().getName().equals("Unknown")) {
+                    familiesByCategory.add(family.getValue().orgName);
+                } else
+                    familiesByCategory.add(family.getValue().getName());
+            }
+            for(TreeNode<Taxon> subfamily : family.getChildren()) {
+                if(subfamily.getValue().getRank().equals("Subfamily")) {
+                    if(subfamily.getValue().getCategory() != null) {
+                        if(subfamily.getValue().getCategory().equals(category)) {
+                            familiesByCategory.add(family.getValue().getName() + "/" + subfamily.getValue().getName());
+                        }
+                    } else {
+                        if(family.getValue().getCategory().equals(category))
+                            familiesByCategory.add(family.getValue().getName() + "/" + subfamily.getValue().getName());
+                    }
+                }
+            }
+        }
+        return familiesByCategory;
     }
 
 
@@ -460,7 +607,10 @@ public class SpeciesTree {
 
     private void exportTreeToCSVHelper(TreeNode<Taxon> node, List<String> path, List<String> ranks, FileWriter writer) throws IOException {
         int idx = ranks.indexOf(node.getValue().getRank());
-        if(idx >= 0) path.set(idx, node.getValue().getSortName());
+        String cat = node.getValue().getCategory() == null ? "" : " (" + node.getValue().getCategory()+ ")";
+
+        if(idx >= 0)
+            path.set(idx, node.getValue().getSortName() + cat);
         else
             System.out.println("Unknown rank: " + node.getValue().getRank() + " for " + node.getValue().getName());
         if(!Objects.isNull(node.getValue().getCategory()))
@@ -503,6 +653,28 @@ public class SpeciesTree {
         }
         return leaves;
     }
+
+    public List<Triple<String, String, String>> getAllGenusWithParents() {
+        List<Triple<String, String, String>> result = new ArrayList<>();
+        collectGenusWithParents(root, "","", result);
+        return result;
+    }
+
+    private void collectGenusWithParents(TreeNode<Taxon> node,  String family, String subfamily, List<Triple<String, String, String>> result) {
+        if (node.getValue().getRank().equals("Genus")) {
+            result.add(new Triple<>(family, subfamily, node.getValue().getNameOrOrgName()));
+        }
+        for (TreeNode<Taxon> child : node.getChildren()) {
+            if(child.getValue().getRank().equals("Family")) {
+                collectGenusWithParents(child,  child.getValue().getNameOrOrgName(), "", result);
+            } else if(child.getValue().getRank().equals("Subfamily")) {
+                collectGenusWithParents(child, family, child.getValue().getNameOrOrgName(), result);
+            } else
+                collectGenusWithParents(child, family, subfamily, result);
+        }
+    }
+
+    public record Triple<A, B, C>( A first, B second, C third) { }
 
     public List<Taxon> getPathToSpecies(String species) {
         Species sp = findSpecies(root, species);
@@ -570,8 +742,8 @@ public class SpeciesTree {
                 //result.forEach(t -> System.out.print(t.getName() + "[}" + t.getRank() + "] - "));
                 //System.out.println();
 
-                //compareTaxonLists(sp.getName(), list, result);
-                compareTaxonLists(sp.getName(), result, list);
+                compareTaxonLists(sp.getName(), list, result);
+                //compareTaxonLists(sp.getName(), result, list);
 
             }
         } catch(IOException e) {
@@ -649,11 +821,11 @@ public class SpeciesTree {
         speciesTree.sortTreeByName(speciesTree.root);
         String tree = speciesTree.displayTree(speciesTree.depthFirstSearch(speciesTree.root, "Biota"));
         System.out.println(tree);
-        try(FileWriter writer = new FileWriter("/tmp/taxonomy_tree.txt")) {
+        try(FileWriter writer = new FileWriter("/home/fc/web/reef4/taxonomy_tree.txt")) {
             writer.write(tree);
         }
 
-        speciesTree.exportTreeToCSV(speciesTree.root, "/tmp/species.csv");
+        speciesTree.exportTreeToCSV(speciesTree.root, "/home/fc/web/reef4/species.csv");
 
         List<String> leafNames = speciesTree.getAlldangelingLeaf(speciesTree.root);
         leafNames.forEach(System.out::println);
