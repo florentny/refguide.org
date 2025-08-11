@@ -58,7 +58,6 @@ public class genReef4 extends genReef35{
                     }
                 }
             }
-            genFamilyIndex(baseIndex, reefRef, headers[0]);
 
             for(var cat : genus_classification.getAllCat()) {
                 var z = species_collection.getSpeciesFromCat(cat);

@@ -73,13 +73,8 @@ public class genReef35 {
 
     protected class genusClassifaction {
 
-        private final Map<String, Genus> genusFam = new HashMap<>();
         private final Map<String, String> CatSpeeciesType = new HashMap<>();
         private final Map<String, List<String>> groups = new HashMap<>();
-
-        void add(String genus, String family, String subfamily) {
-            genusFam.put(genus, new Genus(genus, family, subfamily));
-        }
 
         void addGroup(String name, List<String> list) {
             groups.put(name, list);
@@ -99,22 +94,6 @@ public class genReef35 {
 
         Set<String> getAllCat() {
             return speciesTree.getAllCategories();
-        }
-
-        String getFamilyForGenus(String genus) {
-            var r = genusFam.get(genus);
-            if(r == null) {
-                System.out.println("MISSING GENUS: " + genus);
-            }
-            return genusFam.get(genus).fullFamily();
-        }
-
-        @Deprecated
-        String[] getFamilySplitForGenus(String genus) {
-            String[] ret = new String[2];
-            ret[0] = genusFam.get(genus).famname();
-            ret[1] = genusFam.get(genus).subname();
-            return ret;
         }
     }
 
@@ -217,7 +196,6 @@ public class genReef35 {
                             throw new RuntimeException("DUPLICATE SCINAME");
                         }
                     });
-
         }
 
     }
@@ -462,7 +440,6 @@ public class genReef35 {
 
                 }
             }
-
         } catch(Exception ex) {
             ex.printStackTrace();
             System.exit(1);
@@ -471,19 +448,6 @@ public class genReef35 {
 
     private void loadDataBase(MongoDatabase db, int reefRef) {
         genus_classification = new genusClassifaction();
-
-        List<SpeciesTree.Triple<String, String, String>> genus =  speciesTree.getAllGenusWithParents();
-        for(var g : genus) {
-            String family = g.first();
-            String subfamily = g.second();
-            String genusName = g.third();
-            if(genus_classification.getGroup(genusName) == null) {
-               genus_classification.add(genusName, family, subfamily);
-            }
-            else {
-                System.out.println("Duplicate genus: " + genusName + " - " + family + " - " + subfamily);
-            }
-        }
 
         species_collection = new speciesCollection();
         MongoCollection<Document> collection = db.getCollection("species");
@@ -592,7 +556,6 @@ public class genReef35 {
                     }
                 }
             }
-            genFamilyIndex(baseIndex, reefRef, headers[0]);
 
             for(var cat : genus_classification.getAllCat()) {
                 var z = species_collection.getSpeciesFromCat(cat);
@@ -644,7 +607,7 @@ public class genReef35 {
             jsonGenerator.writeStringField("fullname", sp.name);
             jsonGenerator.writeStringField("sname", sp.sciName);
             jsonGenerator.writeStringField("subcategory", species_collection.getCat(sp.id));
-            jsonGenerator.writeStringField("category", genus_classification.getFamilyForGenus(sp.genus()));
+            jsonGenerator.writeStringField("category", String.join("/", speciesTree.getPathToSpecies(sp.id).stream().skip(3).map(SpeciesTree.Taxon::getName).toList()));
             jsonGenerator.writeStringField("size", getSpNull(sp.size));
             jsonGenerator.writeStringField("depth", getSpNull(sp.depth));
             jsonGenerator.writeNumberField("thumb1", sp.thumbs.getFirst());
@@ -1135,129 +1098,6 @@ public class genReef35 {
             outString = outString.replace("__CHECK_FP__", "<div class=\"arrow2\">&nbsp;</div>" + reefMenu[6]);
 
         return outString;
-
-    }
-
-
-    protected void genFamilyIndex(String baseIndex, int reefRef, String header) throws IOException {
-        genFamilyIndex(baseIndex, reefRef, header, typeList[0]);
-        genFamilyIndex(baseIndex, reefRef, header, typeList[1]);
-        genFamilyIndex(baseIndex, reefRef, header, typeList[2]);
-        genFamilyIndex(baseIndex, reefRef, header, typeList[3]);
-        genFamilyIndex(baseIndex, reefRef, header, typeList[4]);
-    }
-
-    protected void genFamilyIndex(String baseIndex,
-                                  int reefRef,
-                                  String header, String type) throws IOException {
-
-
-        String preReefString = "";
-        if(!preReefName[reefRef].isEmpty()) {
-            preReefString = "<span class=\"pretitle\">" + preReefName[reefRef] + "</span>";
-        }
-        String base = "";
-
-        if(!baseIndex.equals(basepathIndexAll)) {
-            base = "../";
-        }
-
-        String title = "index";
-
-        String outString;
-
-        outString = readFile("index0.html");
-        outString = processSelectedGuideMenu(outString, reefRef);
-
-        outString = outString.replace("__REEF__", reefName[reefRef]);
-        outString = outString.replace("__PRENAME__", preReefString);
-        outString = outString.replace("__BASE__", base);
-        outString = outString.replace("__BANNER__", header);
-
-        if(analytics) {
-            outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
-        } else {
-            outString = outString.replace("__ANALYTICS__", "");
-        }
-
-        StringBuilder html = new StringBuilder();
-
-        for(int j = 0; j < typeList.length - 1; j++) {
-            if(typeList[j].equals(type)) {
-                html.append("<div class=\"buttonType1\">");
-                html.append(typeList[j]).append("</div>");
-            } else {
-                html.append("<div class=\"buttonType\"><a  href=\"index_");
-                html.append(typeList[j]).append(".html\">").append(typeList[j]).append("</a></div>");
-            }
-        }
-        html.append("<br /><br />");
-        String family = "";
-        String[] fam;
-        Map<String, String> finalMap = new HashMap<>();
-        List<String> finalList = new ArrayList<>();
-
-        List<Species> sp_list;
-
-        for(String cat : genus_classification.getAllCat()) {
-            var t = getSpeciesClass(cat);
-            if(t != null && !t.equals(type))
-                continue;
-            if(family.equals(cat)) {
-                continue;
-            } else {
-                family = cat;
-                sp_list = species_collection.getSpeciesFromCat(cat);
-                if(sp_list.isEmpty())
-                    continue;
-                String genus = sp_list.getFirst().genus();
-                fam = genus_classification.getFamilySplitForGenus(genus);
-            }
-            StringBuilder html_frag = new StringBuilder();
-
-            List<Species> finalSp_list = sp_list;
-            int index = pageList.stream().filter(g -> g.species.contains(finalSp_list.getFirst())).findAny().orElseThrow().index;
-
-            html_frag.append("<a href=\"").append("index").append(index).append(".html#").append(cat.replace(" ", "_")).append("\">\n");
-            html_frag.append("<div class=\"famInfo\">\n");
-            html_frag.append("<p class=\"label\">").append(cat).append("</p>\n");
-            String img;
-            String img2 = "";
-            String img3 = "";
-            img = sp_list.get(0).id + sp_list.get(0).thumbs().getFirst();
-            if(sp_list.size() > 1)
-                img2 = sp_list.get(1).id() + sp_list.get(1).thumbs().getFirst();
-            if(sp_list.size() > 2)
-                img3 = sp_list.get(2).id() + sp_list.get(2).thumbs().getFirst();
-            html_frag.append("<img class=\"famPhoto\" alt=\"\" src=\"").append(base).append("pix/thumb/").append(img).append(".jpg\" alt=\"").append(sp_list.get(0).name).append(" - ").append(sp_list.get(0).sciName).append("\" title=\"").append(sp_list.get(0).name).append(" - ").append(sp_list.get(0).sciName).append("\" />");
-            html_frag.append("\n<div class=\"famDetails\">\n");
-            if(!img2.isEmpty())
-                html_frag.append("<img class=\"smallPhoto\" alt=\"\" src=\"").append("pix/thumb3/").append(img2).append(".jpg\" alt=\"").append(sp_list.getFirst().name).append(" - ").append(sp_list.getFirst().sciName).append("\" title=\"").append(sp_list.getFirst().name).append(" - ").append(sp_list.getFirst().sciName).append("\" />");
-            if(!img3.isEmpty())
-                html_frag.append("<img class=\"smallPhoto\" alt=\"\" src=\"").append("pix/thumb3/").append(img3).append(".jpg\" alt=\"").append(sp_list.getFirst().name).append(" - ").append(sp_list.getFirst().sciName).append("\" title=\"").append(sp_list.getFirst().name).append(" - ").append(sp_list.getFirst().sciName).append("\" />");
-            if(!fam[0].isEmpty() && !fam[0].startsWith("_")) {
-                html_frag.append("<p class=\"label1\">").append("Family").append(": <span class=\"label1\">").append(fam[0]).append("</span></p>\n");
-                if(!fam[1].isEmpty())
-                    html_frag.append("<p class=\"label1\">Subfamily: <span class=\"label1\">").append(fam[1]).append("</span></p>\n");
-            } else {
-                //String[] c = genus_classification.getAltCatForGenus(sp_list.getFirst().genus());
-                html_frag.append("<p class=\"label1\">").append(": <span class=\"label1\">").append("</span></p>\n");
-            }
-            html_frag.append("<p class=\"label2\">").append(sp_list.size()).append(" Species</p>\n");
-            html_frag.append("</div></div>\n");
-            html_frag.append("</a>\n");
-            finalMap.put(cat, html_frag.toString());
-            finalList.add(cat);
-
-        }
-        finalList.forEach((h) -> html.append(finalMap.get(h)));
-
-
-        outString = outString.replace("__INDEX_HTML__", html.toString());
-        outString = outString.replace("__TITLE__", title);
-        String name = "index_" + type + ".html";
-        writeToFile(outString, baseIndex + "/" + name);
-
 
     }
 

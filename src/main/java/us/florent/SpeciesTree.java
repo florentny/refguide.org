@@ -505,32 +505,6 @@ public class SpeciesTree {
         }
     }
 
-    public List<String> getFamSubfamByCategory(String category) {
-        List<String> familiesByCategory = new ArrayList<>();
-        for(TreeNode<Taxon> family : families) {
-            if(Objects.nonNull(family.getValue().getCategory()) && family.getValue().getCategory().equals(category)) {
-                if(family.getValue().getName().equals("Unknown")) {
-                    familiesByCategory.add(family.getValue().orgName);
-                } else
-                    familiesByCategory.add(family.getValue().getName());
-            }
-            for(TreeNode<Taxon> subfamily : family.getChildren()) {
-                if(subfamily.getValue().getRank().equals("Subfamily")) {
-                    if(subfamily.getValue().getCategory() != null) {
-                        if(subfamily.getValue().getCategory().equals(category)) {
-                            familiesByCategory.add(family.getValue().getName() + "/" + subfamily.getValue().getName());
-                        }
-                    } else {
-                        if(family.getValue().getCategory().equals(category))
-                            familiesByCategory.add(family.getValue().getName() + "/" + subfamily.getValue().getName());
-                    }
-                }
-            }
-        }
-        return familiesByCategory;
-    }
-
-
     public void printNodeJson(TreeNode<Taxon> node, String parentName, StringBuilder jsonOutput) {
         JSONObject obj = new JSONObject();
         obj.put("name", node.getValue().getName());
@@ -639,7 +613,6 @@ public class SpeciesTree {
         return true;
     }
 
-
     public List<String> getAlldangelingLeaf(TreeNode<Taxon> node) {
         List<String> leaves = new ArrayList<>();
         if(node.getChildren().isEmpty()) {
@@ -652,26 +625,6 @@ public class SpeciesTree {
             }
         }
         return leaves;
-    }
-
-    public List<Triple<String, String, String>> getAllGenusWithParents() {
-        List<Triple<String, String, String>> result = new ArrayList<>();
-        collectGenusWithParents(root, "","", result);
-        return result;
-    }
-
-    private void collectGenusWithParents(TreeNode<Taxon> node,  String family, String subfamily, List<Triple<String, String, String>> result) {
-        if (node.getValue().getRank().equals("Genus")) {
-            result.add(new Triple<>(family, subfamily, node.getValue().getNameOrOrgName()));
-        }
-        for (TreeNode<Taxon> child : node.getChildren()) {
-            if(child.getValue().getRank().equals("Family")) {
-                collectGenusWithParents(child,  child.getValue().getNameOrOrgName(), "", result);
-            } else if(child.getValue().getRank().equals("Subfamily")) {
-                collectGenusWithParents(child, family, child.getValue().getNameOrOrgName(), result);
-            } else
-                collectGenusWithParents(child, family, subfamily, result);
-        }
     }
 
     public record Triple<A, B, C>( A first, B second, C third) { }
