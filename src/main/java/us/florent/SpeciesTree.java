@@ -15,6 +15,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -318,7 +319,8 @@ public class SpeciesTree {
     }
 
     public String getRestReply(String urlString) throws Exception {
-        URL url = new URL(urlString);
+        URI uri = new URI(urlString);
+        URL url = uri.toURL();
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         conn.setRequestMethod("GET");
         conn.setRequestProperty("Accept", "application/json");
@@ -369,24 +371,6 @@ public class SpeciesTree {
             }
         }
 
-       // MongoCollection<Document> collectionzz = db.getCollection("taxon");
-//        collection = db.getCollection("genus");
-//        for(Document doc : collection.find()) {
-//            if(doc.get("subfamily").toString().isEmpty()) {
-//                String family = doc.get("family").toString();
-//                String genus = doc.get("genus").toString();
-//                TreeNode<Taxon> genusNode = addLeaf(family, genus, "Genus");
-//
-//            } else {
-//                String subfamily = doc.get("subfamily").toString();
-//                String genus = doc.get("genus").toString();
-//                TreeNode<Taxon> genusNode = addLeaf(subfamily, genus, "Genus");
-////                String zz = String.format("{\"parent\": \"%s\",\"name\": \"%s\",\"rank\": \"Genus\"}\n", subfamily, genus);
-////                System.out.print(zz);
-////                collectionzz.insertOne( Document.parse(zz));
-//            }
-//        }
-
         collection = db.getCollection("species");
         for(Document doc : collection.find()) {
             String[] sciName = doc.get("sciName").toString().split(" ", 2);
@@ -420,8 +404,8 @@ public class SpeciesTree {
     }
 
     public String getCategoryForSpeciesId(String speciesId) {
-        String category = null;
-        String subCategory = null;
+        String category;
+        String subCategory;
         for(TreeNode<Taxon> family : families) {
             category = family.getValue().getCategory();
             for(TreeNode<Taxon> onedown : family.getChildren()) {
@@ -511,7 +495,7 @@ public class SpeciesTree {
         obj.put("rank", node.getValue().getRank());
         obj.put("category", node.getValue().getCategory());
         obj.put("parent", parentName);
-        jsonOutput.append(obj.toString()).append("\n");
+        jsonOutput.append(obj).append("\n");
 
         for(TreeNode<Taxon> child : node.getChildren()) {
             if(child.getValue() instanceof Species
@@ -526,7 +510,7 @@ public class SpeciesTree {
     public TreeNode<Taxon> buildTaxonomy() throws Exception {
         System.setProperty("org.slf4j.simpleLogger.log.org.mongodb.driver", "warn");
 
-        MongoDatabase db = null;
+        MongoDatabase db;
         MongoClient mongoClient = MongoClients.create();
         db = mongoClient.getDatabase("reef4");
 
@@ -589,7 +573,7 @@ public class SpeciesTree {
             System.out.println("Unknown rank: " + node.getValue().getRank() + " for " + node.getValue().getName());
         if(!Objects.isNull(node.getValue().getCategory()))
             path.set(ranks.indexOf("Category"), node.getValue().getCategory());
-        if(node.getValue() instanceof Species sp) {
+        if(node.getValue() instanceof Species) {
             path.set(ranks.indexOf("Common Name"), node.getValue().getName());
         }
 
@@ -626,8 +610,6 @@ public class SpeciesTree {
         }
         return leaves;
     }
-
-    public record Triple<A, B, C>( A first, B second, C third) { }
 
     public List<Taxon> getPathToSpecies(String species) {
         Species sp = findSpecies(root, species);

@@ -59,15 +59,6 @@ public class genReef35 {
         }
     }
 
-    record Genus(String id, String famname, String subname) {
-        String fullFamily() {
-            if(subname.isBlank())
-                return famname;
-            else
-                return famname + "/" + subname;
-        }
-    }
-
     protected record photo(int id, String location, String type, String comment) {
     }
 
@@ -174,7 +165,7 @@ public class genReef35 {
         }
 
         List<String> getSpeciesNameFromCat(String category) {
-            return speciesTree.getAllSpeciesBelowCategory(category).stream().map(sp -> sp.getOrgGenus()).distinct()
+            return speciesTree.getAllSpeciesBelowCategory(category).stream().map(SpeciesTree.Species::getOrgGenus).distinct()
                     .flatMap(s -> species_collection.getSpeciesFromGenus(s).stream()).collect(Collectors.toList());
         }
 
@@ -424,7 +415,7 @@ public class genReef35 {
                                 group = new ArrayList<>();
                                 group.add(name.toString());
                             }
-                            group.stream().forEachOrdered(cat -> {
+                            group.forEach(cat -> {
                                 _page.group.put(cat, overrideCat(name.toString(), reefRef));
                                 genus_classification.addCatSpeciesType(cat, catType);
                                 List<String> sl = species_collection.getSpeciesNameFromCat(cat);
@@ -1559,7 +1550,6 @@ public class genReef35 {
             FileChannel out = new FileOutputStream(dest).getChannel()) {
             long size = in.size();
             MappedByteBuffer buf = in.map(FileChannel.MapMode.READ_ONLY, 0, size);
-
             out.write(buf);
 
         } catch(Exception fnfe) {
