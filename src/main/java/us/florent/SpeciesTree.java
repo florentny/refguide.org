@@ -20,8 +20,10 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
@@ -37,6 +39,8 @@ public class SpeciesTree {
             "Infraclass", "Subterclass", "Superorder", "Order", "Suborder", "Infraorder", "Superfamily", "Family", "Subfamily", "Genus", "Species");
 
     List<TreeNode<Taxon>> families;
+
+    Map<String, Species> speciesMap;
 
     public static class Taxon {
         private String name;
@@ -142,6 +146,7 @@ public class SpeciesTree {
     public static class TreeNode<T> {
         private final T value;
         private final List<TreeNode<T>> children;
+        private TreeNode<T> parent = null;
 
         public TreeNode(T value) {
             this.value = value;
@@ -152,13 +157,19 @@ public class SpeciesTree {
             return value;
         }
 
+        public TreeNode<T> getParent() {
+            return parent;
+        }
+
         public List<? extends TreeNode<T>> getChildren() {
             return children;
         }
 
         public void addChild(TreeNode<T> child) {
+            child.parent = this;
             children.add(child);
         }
+        
     }
 
     private final TreeNode<Taxon> root = new TreeNode<>(new Taxon("Biota", "Domain"));
@@ -218,7 +229,12 @@ public class SpeciesTree {
         return null; // Not found
     }
 
-    public Species addSpecies(String id, String genus, String epithet, String speciesName) {
+    public Species findSpecies(String name) {
+        return speciesMap.get(name);
+    }
+
+
+    public TreeNode<Taxon> addSpecies(String id, String genus, String epithet, String speciesName) {
         TreeNode<Taxon> genusNode = depthFirstSearch(root, genus);
         if(genusNode == null) {
             return null; // Genus not found
@@ -228,7 +244,7 @@ public class SpeciesTree {
             if(child.getValue() instanceof Species species) {
                 if(species.epithet.equals(epithet)) {
                     System.out.println("Species already exists: " + speciesName);
-                    return species;
+                    return child;
                 }
             }
         }
@@ -244,7 +260,7 @@ public class SpeciesTree {
             genusNode.getValue().setName("Unknown");
         }
         genusNode.addChild(speciesNode);
-        return sp;
+        return speciesNode;
     }
 
     public TreeNode<Taxon> addLeaf(String parentName, String leafName, String leafRank) {
@@ -359,7 +375,8 @@ public class SpeciesTree {
             taxon.setCategory(category);
             TreeNode<Taxon> node = new TreeNode<>(taxon);
             if(!parent.isEmpty()) {
-                TreeNode<Taxon> parentNode = breadthFirstSearch(root, parent);
+                //TreeNode<Taxon> parentNode = breadthFirstSearch(root, parent);
+                TreeNode<Taxon> parentNode = depthFirstSearch(root, parent);
                 if(parentNode != null) {
                     parentNode.addChild(node);
                 } else {
@@ -371,6 +388,7 @@ public class SpeciesTree {
             }
         }
 
+        speciesMap = new HashMap<>();
         collection = db.getCollection("species");
         for(Document doc : collection.find()) {
             String[] sciName = doc.get("sciName").toString().split(" ", 2);
@@ -380,17 +398,31 @@ public class SpeciesTree {
                 sciName = new String[]{doc.get("id").toString(), "Unknown"}; // Default to Unknown if invalid
                 // continue; // Skip invalid names
             }
-            addSpecies(doc.get("id").toString(), sciName[0], sciName[1], doc.get("Name").toString());
+            var sp = addSpecies(doc.get("id").toString(), sciName[0], sciName[1], doc.get("Name").toString());
+            speciesMap.put(sp.getValue().getName(), (Species) sp.getValue());
+            speciesMap.put(((Species)sp.getValue()).getId(), (Species) sp.getValue());
+            speciesMap.put(doc.get("sciName").toString(), (Species) sp.getValue());
+            setSpeciesCategory(sp);
         }
-
         sortTreeByName(depthFirstSearch(root, "Biota"));
 
         families = getAllFamilyNodes(root);
+    }
 
+    private void setSpeciesCategory(TreeNode<Taxon> sp) {
+        var parent = sp.getParent();
+        while(parent != null) {
+            if(parent.getValue().getCategory() != null) {
+                sp.getValue().setCategory(parent.getValue().getCategory());
+                return;
+            }
+            parent = parent.getParent();
+        }
     }
 
     public String getLastCategoryForSpeciesId(String speciesId) {
-        Species sp = findSpecies(root, speciesId);
+        //Species sp = findSpecies(root, speciesId);
+        Species sp = findSpecies(speciesId);
         if (sp == null)
             return null;
         List<Taxon> path = getPathToSpecies(root, sp);
@@ -404,29 +436,12 @@ public class SpeciesTree {
     }
 
     public String getCategoryForSpeciesId(String speciesId) {
-        String category;
-        String subCategory;
-        for(TreeNode<Taxon> family : families) {
-            category = family.getValue().getCategory();
-            for(TreeNode<Taxon> onedown : family.getChildren()) {
-                subCategory = onedown.getValue().getCategory();
-                for(TreeNode<Taxon> twodown : onedown.getChildren()) {
-                    if(twodown.getValue() instanceof Species sp && sp.id.equals(speciesId)) {
-                        return category;
-                    }
-                    for(TreeNode<Taxon> threedown : twodown.getChildren()) {
-                        if(threedown.getValue() instanceof Species sp && sp.id.equals(speciesId)) {
-                            if(subCategory != null) {
-                                return subCategory;
-                            } else {
-                                return category;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return null; // No category found
+        Species sp = findSpecies(speciesId);
+        if (sp == null)
+            return null;
+        if(sp.getCategory() != null)
+            return sp.getCategory();
+        return getLastCategoryForSpeciesId(speciesId);
     }
 
     public Set<String> getAllCategories() {
@@ -507,7 +522,7 @@ public class SpeciesTree {
         }
     }
 
-    public TreeNode<Taxon> buildTaxonomy() throws Exception {
+    public void buildTaxonomy() throws Exception {
         System.setProperty("org.slf4j.simpleLogger.log.org.mongodb.driver", "warn");
 
         MongoDatabase db;
@@ -518,7 +533,6 @@ public class SpeciesTree {
 
         mongoClient.close();
 
-        return root;
     }
 
     public String displayTree(TreeNode<Taxon> root) {

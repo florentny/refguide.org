@@ -156,7 +156,7 @@ public class genReef35 {
         }
 
         String getCat(String id) {
-            String ret = speciesTree.getLastCategoryForSpeciesId(id);
+            String ret = speciesTree.getCategoryForSpeciesId(id);
             if(ret == null) {
                 System.out.println("MISSING CAT FOR SPECIES: " + id);
                 return "Unknow";
@@ -1530,7 +1530,7 @@ public class genReef35 {
     public static void main(String... args) throws Exception {
 
         System.setProperty("org.slf4j.simpleLogger.log.org.mongodb.driver", "warn");
-
+        //Thread.sleep(10000);
         genReef35 reef = new genReef35();
         reef.basepathIndexAll = "/home/fc/web/reef4";
         if(args.length == 1) {
