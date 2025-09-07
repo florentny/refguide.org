@@ -31,7 +31,9 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.19.+'
     implementation 'org.junit.jupiter:junit-jupiter:5.12.+'
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.12.+'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.12.+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.12.+'
+    testImplementation 'org.mockito:mockito-core:5.2.0'
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 test {

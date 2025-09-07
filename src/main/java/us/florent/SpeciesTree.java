@@ -230,6 +230,8 @@ public class SpeciesTree {
     }
 
     public Species findSpecies(String name) {
+        if(speciesMap == null)
+            return findSpecies(root, name);
         return speciesMap.get(name);
     }
 
@@ -409,7 +411,7 @@ public class SpeciesTree {
         families = getAllFamilyNodes(root);
     }
 
-    private void setSpeciesCategory(TreeNode<Taxon> sp) {
+    protected void setSpeciesCategory(TreeNode<Taxon> sp) {
         var parent = sp.getParent();
         while(parent != null) {
             if(parent.getValue().getCategory() != null) {
