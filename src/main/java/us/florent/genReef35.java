@@ -801,19 +801,25 @@ public class genReef35 {
         outString = outString.replace("__TITLE__", sp.name + " - " + sp.sciName + " - " + cat + " - " + sp.aka);
 
         StringBuilder taxonomy = new StringBuilder();
-        List<String> remove = Arrays.asList("Domain", "Species", "Kingdom");
+        List<String> remove = Arrays.asList("Domain", "Kingdom");
         String name = sp.sciName();
         if(name.isEmpty()) {
             name = sp.name();
         }
         StringBuilder ident = new StringBuilder();
-        speciesTree.getPathToSpecies(name).stream().filter(t -> !t.getName().equals("Unknown")).filter(t -> !remove.contains(t.getRank())).forEach(t -> {
-            taxonomy.append("<div class=\"infodetails\"><span class=\"sntitle\">").append(ident).append(t.getName()).append("</span><span class=\"details\"> (").append(t.getRank()).append(")</span></div>").append("\n");
-            if(ident.isEmpty())
-                ident.append("&boxur;");
-            else
-                ident.insert(0,"&nbsp;");
-        });
+        speciesTree.getPathToSpecies(name).stream().filter(t -> !t.getShortSciName().contains("Unknown")).filter(t -> !t.getShortSciName().contains("/")).
+                filter(t -> !remove.contains(t.getRank())).forEach(t -> {
+                    var tip = "";
+                    if(t.getCategory() != null) {
+                        tip = " title=\"" + t.getCategory().replace("&", "&amp;") + "\"";
+                    }
+
+                    taxonomy.append("<div class=\"infodetails\"><span class=\"sntitle\"" + tip + ">").append(ident).append(t.getShortSciName()).append("</span><span class=\"details\"> (").append(t.getRank()).append(")</span></div>").append("\n");
+                    if(ident.isEmpty())
+                        ident.append("&boxur;");
+                    else
+                        ident.insert(0, "&nbsp;");
+                });
         outString = outString.replace("__HIGHER__", taxonomy.toString());
 
         outString = outString.replace("__CAT__", cat);

@@ -97,6 +97,9 @@ public class SpeciesTree {
             return getName();
         }
 
+        public String getShortSciName() {
+            return getName();
+        }
 
         public String getRank() {
             return rank;
@@ -139,6 +142,11 @@ public class SpeciesTree {
         @Override
         public String getSciName() {
             return genus + " " + epithet;
+        }
+
+        @Override
+        public String getShortSciName() {
+            return genus.charAt(0) + ". " +  epithet;
         }
 
     }
@@ -671,12 +679,17 @@ public class SpeciesTree {
     }
 
     void addAphiaIDB() throws Exception {
+        System.out.println();
         try(BufferedReader br = new BufferedReader(new FileReader("worms.txt"))) {
             String line;
             while((line = br.readLine()) != null) {
                 String[] fields = line.split("\t");
                 //System.out.println("Adding AphiaID " + fields[1] + " to " + fields[0]);
                 Species sp = findSpecies(root, fields[0]);
+                if(sp == null) {
+                    System.out.println("worms.txt - Species not found: " + fields[0]);
+                    continue;
+                }
                 sp.setAphiaID(Integer.parseInt(fields[1]));
                 List<Taxon> list = getPathToSpecies(root, sp);
                 if(!isPathInRankOrder(list)) {
@@ -705,11 +718,13 @@ public class SpeciesTree {
     public void compareTaxonLists(String id, List<Taxon> list1, List<Taxon> list2) {
 
         for(int i = 2; i < list1.size(); i++) {
-            String name = list1.get(i).getSciName();
+            String name = list1.get(i).getSciName().split(" ")[0];
             String rank = list1.get(i).getRank();
 
             var match = list2.stream().filter(t -> t.getSciName().startsWith(name) && t.getRank().equals(rank)).findFirst();
             if(match.isEmpty()) {
+                if(name.equals("Gnathostomata") || rank.equals("Subterclass"))
+                    continue;
                 System.out.println(id + "--> No match for: " + name + " (" + rank + ")");
             }
         }
