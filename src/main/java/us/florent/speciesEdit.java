@@ -647,6 +647,9 @@ public class speciesEdit extends javax.swing.JFrame {
             System.out.println("No update tag");
             doc.put("update", new Date());
         }
+        if(rec != null && rec.getString("subgenus") != null) {
+            doc.put("subgenus", rec.getString("subgenus"));
+        }
 
         db.getMongoDB().getCollection("species").replaceOne(new Document("id", IDTextField.getText().trim()),
                 doc, new ReplaceOptions().upsert(true));

@@ -88,7 +88,7 @@ public class genReef35 {
         }
     }
 
-    protected record Species(String id, String name, String sciName, String size, String depth, boolean endemic,
+    protected record Species(String id, String name, String sciName, String subGenus, String size, String depth, boolean endemic,
                              List<String> dist,
                              List<photo> photo, List<Integer> thumbs, String synonyms, String aka, String note,
                              List<String> dispNames,
@@ -99,6 +99,15 @@ public class genReef35 {
             else if(sciName.split(" ")[0].equals("cf."))
                 return sciName.split(" ")[1];
             return sciName.split(" ")[0];
+        }
+
+        String fullSciName() {
+            if(subGenus == null || subGenus.isBlank())
+                return sciName;
+            String[] parts = sciName.split(" ");
+            if(parts.length < 2)
+                return sciName;
+            return parts[0] + " (" + subGenus + ") " + parts[1];
         }
 
         int getNameCount() {
@@ -117,7 +126,7 @@ public class genReef35 {
     protected class speciesCollection {
         private final Map<String, Species> species = new HashMap<>();
 
-        void add(String id, String name, String sciName, String size, String depth, boolean endemic, List<String> dist, List<Document> photos,
+        void add(String id, String name, String sciName, String subGenus, String size, String depth, boolean endemic, List<String> dist, List<Document> photos,
                  List<Integer> thumbs, String synonyms, String aka, String note, List<String> dispNames, Date update) {
             List<photo> p = new ArrayList<>();
             for(Document doc : photos)
@@ -128,7 +137,7 @@ public class genReef35 {
                 long ed = depthmetric(Integer.parseInt(depth.split("-")[1]));
                 depth = depth + " ft. (" + sd + "-" + ed + " m)";
             }
-            species.put(id, new Species(id, name, sciName, size, depth, endemic, dist, p, thumbs, synonyms, aka, note, dispNames, update));
+            species.put(id, new Species(id, name, sciName, subGenus, size, depth, endemic, dist, p, thumbs, synonyms, aka, note, dispNames, update));
         }
 
         private List<photo> sortPhotos(List<photo> ph, List<Integer> thumbs) {
@@ -148,7 +157,7 @@ public class genReef35 {
 
 
         List<String> getSpeciesFromGenus(String genus) {
-            return species.values().stream().filter(x -> x.genus().equals(genus)).sorted(Comparator.comparing(Species::sciName)).map(Species::id).collect(Collectors.toList());
+            return species.values().stream().filter(x -> x.genus().equals(genus)).sorted(Comparator.comparing(Species::fullSciName)).map(Species::id).collect(Collectors.toList());
         }
 
         Species getSpecies(String id) {
@@ -451,7 +460,7 @@ public class genReef35 {
                 if(checkRegion(reefRef, dist)) {
                     List<String> aSciName = doc.getList("aSciName", String.class) == null ? Collections.emptyList() : doc.getList("aSciName", String.class);
                     List<String> aka = doc.getList("aka", String.class) == null ? Collections.emptyList() : doc.getList("aka", String.class);
-                    species_collection.add(doc.getString("id"), doc.getString("Name"), doc.getString("sciName"),
+                    species_collection.add(doc.getString("id"), doc.getString("Name"), doc.getString("sciName"),  doc.getString("subgenus"),
                             doc.getString("size"), doc.getString("depth"), doc.getBoolean("endemic", false),
                             dist, doc.getList("photos", Document.class), doc.getList("thumbs", Integer.class),
                             String.join(", ", aSciName), String.join(", ", aka),
@@ -638,7 +647,7 @@ public class genReef35 {
             outString.append("<item><title>");
             outString.append(sp.name).append("</title><link>http://reefguide.org/").append(sp.id).append(".html</link>");
             outString.append("<description>&lt;img src=\"http://reefguide.org/pix/thumb3/").append(sp.id).append(sp.thumbs.getFirst()).append(".jpg\" /&gt;&lt;br /&gt;");
-            outString.append(sp.name).append(" (").append(sp.sciName).append(")&lt;br /&gt;");
+            outString.append(sp.name).append(" (").append(sp.fullSciName()).append(")&lt;br /&gt;");
             outString.append("Category: ").append(species_collection.getCat(sp.id).replace("&", "&amp;")).append("&lt;br /&gt;");
             outString.append("Size: ").append(sp.size).append("&lt;br /&gt;");
             outString.append("Depth: ").append(sp.depth).append("&lt;br /&gt;");
@@ -694,7 +703,7 @@ public class genReef35 {
                     reef_name.append(" - ").append(ph.type);
                 }
                 reef_name.append("\",");
-                sci_name.append("\"").append(sp.sciName).append("\",");
+                sci_name.append("\"").append(sp.fullSciName()).append("\",");
                 if(!subdir.equals(cat)) {
                     subdir = cat;
                     cat_reef.append("\"").append(subdir).append("\",");
@@ -784,8 +793,8 @@ public class genReef35 {
             outString = outString.replace("__NAME__", sp.name);
         }
         if(!sp.sciName().isEmpty()) {
-            outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName() + "</span>");
-            outString = outString.replace("__SCINAME2__", sp.sciName());
+            outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.fullSciName() + "</span>");
+            outString = outString.replace("__SCINAME2__", sp.fullSciName());
         } else {
             outString = outString.replace("__SCINAME__", "");
             outString = outString.replace("__SCINAME2__", "");
@@ -798,11 +807,11 @@ public class genReef35 {
 
         var cat = species_collection.getCat(sp.id());
 
-        outString = outString.replace("__TITLE__", sp.name + " - " + sp.sciName + " - " + cat + " - " + sp.aka);
+        outString = outString.replace("__TITLE__", sp.name + " - " + sp.fullSciName() + " - " + cat + " - " + sp.aka);
 
         StringBuilder taxonomy = new StringBuilder();
         List<String> remove = Arrays.asList("Domain", "Kingdom");
-        String name = sp.sciName();
+        String name = sp.fullSciName();
         if(name.isEmpty()) {
             name = sp.name();
         }
@@ -813,7 +822,6 @@ public class genReef35 {
                     if(t.getCategory() != null) {
                         tip = " title=\"" + t.getCategory().replace("&", "&amp;") + "\"";
                     }
-
                     taxonomy.append("<div class=\"infodetails\"><span class=\"sntitle\"" + tip + ">").append(ident).append(t.getShortSciName()).append("</span><span class=\"details\"> (").append(t.getRank()).append(")</span></div>").append("\n");
                     if(ident.isEmpty())
                         ident.append("&boxur;");
@@ -866,7 +874,7 @@ public class genReef35 {
             output.append("<div class=\"galleryspan\">\n");
             if(sp.photo.size() > 1) {
                 output.append("<a class=\"pixsel\" href=\"pixhtml/").append(thumbimg).append(".html\">");
-                String title = sp.name + " - " + sp.sciName + " - " + ph.location;
+                String title = sp.name + " - " + sp.fullSciName() + " - " + ph.location;
                 output.append("<img class=\"selframe\" src=\"").append(base).append("pix/thumb2/").append(thumbimg).append(".jpg\" alt=\"").append(title).append("\" title=\"").append(title).append("\"/></a>\n");
                 output.append(" <div class=\"main2\">").append(ph.location).append("</div>\n");
                 String comment = (ph.type == null ? "" : ph.type)
@@ -875,7 +883,7 @@ public class genReef35 {
                 output.append(" <div class=\"main3\">").append(comment).append("</div>\n");
 
             } else {
-                String title = sp.name + " - " + sp.sciName + " - " + ph.location;
+                String title = sp.name + " - " + sp.fullSciName() + " - " + ph.location;
                 output.append("<img class=\"selframe\" src=\"").append(base).append("pix/").append(thumbimg).append(".jpg\" alt=\"").append(title).append("\" title=\"").append(title).append("\"/></a>\n");
                 output.append("<div>");
                 String div = "";
@@ -953,7 +961,7 @@ public class genReef35 {
         }
         outString = outString.replace("__BANNER__", banner);
         outString = outString.replace("__BASE__", base);
-        outString = outString.replace("__TITLE__", sp.name + " - " + sp.sciName + " - " + ph.location + " - Photo " + ph.id);
+        outString = outString.replace("__TITLE__", sp.name + " - " + sp.fullSciName() + " - " + ph.location + " - Photo " + ph.id);
 
 
         if(ph.type != null) {
@@ -964,8 +972,8 @@ public class genReef35 {
         outString = outString.replace("__NAME2__", sp.name);
 
         if(!sp.sciName.isEmpty()) {
-            outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.sciName + "</span>");
-            outString = outString.replace("__SCINAME2__", sp.sciName());
+            outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.fullSciName() + "</span>");
+            outString = outString.replace("__SCINAME2__", sp.fullSciName());
         } else {
             outString = outString.replace("__SCINAME__", "");
             outString = outString.replace("__SCINAME2__", "");
@@ -1026,7 +1034,7 @@ public class genReef35 {
 
         String thumbimg = sp.id + ph.id;
         StringBuilder output = new StringBuilder();
-        output.append("<br /><img class=\"selframe\" src=\"").append(base).append("../pix/").append(thumbimg).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" title=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" />\n");
+        output.append("<br /><img class=\"selframe\" src=\"").append(base).append("../pix/").append(thumbimg).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.fullSciName()).append("\" title=\"").append(sp.name).append(" - ").append(sp.fullSciName()).append("\" />\n");
         output.append("<div>");
         String div = "";
         if(ph.comment != null) {
@@ -1161,7 +1169,7 @@ public class genReef35 {
                 link_reef.append("\"").append(sp.id).append(".html\",");
                 //reef_name.append("\"").append(node.getName(j)).append(zxc).append("\",");
                 reef_name.append("\"").append(sp.getDispName(j)).append("\",");
-                sci_name.append("\"").append(sp.sciName).append("\",");
+                sci_name.append("\"").append(sp.fullSciName()).append("\",");
             }
             var cat = species_collection.getCat(sp.id());
             if(!subdir.equals(cat)) {
@@ -1228,7 +1236,7 @@ public class genReef35 {
             if((col != 0) && ((col % 3) == 0)) {
                 html.append("</tr></table><table><tr>");
             }
-            html.append("<td><img src=\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().getFirst()).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" title=\"").append(sp.name).append(" - ").append(sp.sciName).append("\" />\n");
+            html.append("<td><img src=\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().getFirst()).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.fullSciName()).append("\" title=\"").append(sp.name).append(" - ").append(sp.fullSciName()).append("\" />\n");
             html.append("<br /><div class=\"nameid\"><a href=\"").append(sp.id).append(".html\">").append(sp.name).append("</a></div></td>");
             col++;
         }
@@ -1267,7 +1275,7 @@ public class genReef35 {
         sp_list.forEach(sp -> {
             catName.put(sp.name, sp);
             if(!sp.sciName.isEmpty()) {
-                sciName.put(sp.sciName, sp);
+                sciName.put(sp.fullSciName(), sp);
             }
             if(!sp.aka.isEmpty()) {
                 String[] akas = sp.aka.split(",");
