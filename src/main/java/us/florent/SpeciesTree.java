@@ -49,7 +49,7 @@ public class SpeciesTree {
 
     public static class Taxon {
         private String name;
-        private final String rank;
+        private String rank;
         boolean wasInserted = false;
         private String category = null;
         private String orgName = null;
@@ -401,9 +401,12 @@ public class SpeciesTree {
         }
         String res = response.body();
         var json = new JSONArray(res);
-        String z = json.getJSONObject(0).get("AphiaID").toString();
-
-        return z;
+        for(int i = 0; i < json.length(); i++) {
+            if(json.getJSONObject(i).getString("status").equals("accepted")) {
+                return json.getJSONObject(i).get("AphiaID").toString();
+            }
+        }
+        return null;
     }
 
     void createTree(MongoDatabase db) throws Exception {
@@ -772,6 +775,12 @@ public class SpeciesTree {
                     System.out.println("worms.txt - Species not found: " + fields[0]);
                     continue;
                 }
+                try {
+                    Integer.parseInt(fields[1]);
+                } catch(NumberFormatException e) {
+                    System.out.println("Invalid AphiaID for species " + fields[0] + ": " + fields[1]);
+                    continue;
+                }
                 sp.setAphiaID(Integer.parseInt(fields[1]));
                 List<Taxon> list = getPathToSpecies(root, sp);
                 if(!isPathInRankOrder(list)) {
@@ -788,8 +797,8 @@ public class SpeciesTree {
                 //result.forEach(t -> System.out.print(t.getName() + "[}" + t.getRank() + "] - "));
                 //System.out.println();
 
-                compareTaxonLists(sp.getName(), list, result);
-                //compareTaxonLists(sp.getName(), result, list);
+                //compareTaxonLists(sp.getName(), list, result);
+                compareTaxonLists(sp.getName(), result, list);
 
             }
         } catch(IOException e) {
@@ -799,11 +808,29 @@ public class SpeciesTree {
 
     public void compareTaxonLists(String id, List<Taxon> list1, List<Taxon> list2) {
 
+        list2.forEach(t -> {
+            if(t.rank.equals("Subgenus")) {
+                if(t.name.contains("("))
+                    t.name = t.name.substring(t.name.indexOf('(') + 1, t.name.indexOf(')'));
+            }
+            if(t.rank.contains("("))
+                t.rank = t.rank.substring(t.rank.indexOf('(') + 1, t.rank.indexOf(')'));
+        });
+
+
+
         for(int i = 2; i < list1.size(); i++) {
             String name = list1.get(i).getSciName().split(" ")[0];
             String rank = list1.get(i).getRank();
 
-            var match = list2.stream().filter(t -> t.getSciName().startsWith(name) && t.getRank().equals(rank)).findFirst();
+
+
+
+
+            String finalRank = rank;
+            var match = list2.stream()
+                    .filter(t -> t.getSciName().startsWith(name) && t.getRank().equals(finalRank)).findFirst();
+
             if(match.isEmpty()) {
                 if(name.equals("Gnathostomata") || rank.equals("Subterclass"))
                     continue;
@@ -833,13 +860,15 @@ public class SpeciesTree {
         AtomicInteger count = new AtomicInteger();
         speciesList.stream().limit(5000).forEach(sp -> {
             String wsp = sp.replace(" ", "%20");
-            //wsp="Chiton viridis".replace(" ", "%20");
             try {
                 System.out.print(count.incrementAndGet() + "\t");
                 String id = getRestReply("https://www.marinespecies.org/rest/AphiaIDByName/" + wsp + "?marine_only=true&extant_only=true");
                 if(id.equals("-999")) {
                     System.out.print(" *** ");
                     id = getRestReply999("https://www.marinespecies.org/rest/AphiaRecordsByName/" + wsp + "?marine_only=true&extant_only=true");
+                    if(id == null) {
+                        throw new Exception("Species not found in WoRMS: " + sp);
+                    }
                 }
                 System.out.print(sp + "\t" + id + "\t");
                 sb.append(sp).append("\t").append(id).append("\t");
@@ -887,7 +916,7 @@ public class SpeciesTree {
         System.out.println();
         System.out.println();
 
-        //System.exit(0);
+        System.exit(0);
 
         StringBuilder out = new StringBuilder();
         speciesTree.printNodeJson(speciesTree.root, null, out);
