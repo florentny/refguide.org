@@ -787,14 +787,20 @@ public class genReef35 {
         outString = outString.replace("__GROUP__", group.name);
 
         outString = outString.replace("__NAME2__", sp.name);
+        String actualName = sp.name;
+        String actualSciName = sp.fullSciName();
+        if(sp.name.equals(sp.sciName)) {
+            actualName = "<i>" + sp.fullSciName() + "</i>";
+            actualSciName = "";
+        }
         if((sp.photo.size() == 1) && (sp.photo.getFirst().type != null)) {
-            outString = outString.replace("__NAME__", sp.name + " - " + sp.photo.getFirst().type);
+            outString = outString.replace("__NAME__", actualName + " - " + sp.photo.getFirst().type);
         } else {
-            outString = outString.replace("__NAME__", sp.name);
+            outString = outString.replace("__NAME__", actualName);
         }
         if(!sp.sciName().isEmpty()) {
             outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.fullSciName() + "</span>");
-            outString = outString.replace("__SCINAME2__", sp.fullSciName());
+            outString = outString.replace("__SCINAME2__", actualSciName);
         } else {
             outString = outString.replace("__SCINAME__", "");
             outString = outString.replace("__SCINAME2__", "");
@@ -963,17 +969,23 @@ public class genReef35 {
         outString = outString.replace("__BASE__", base);
         outString = outString.replace("__TITLE__", sp.name + " - " + sp.fullSciName() + " - " + ph.location + " - Photo " + ph.id);
 
+        String actualName = sp.name;
+        String actualSciName = sp.fullSciName();
+        if(sp.name.equals(sp.sciName)) {
+            actualName = "<i>" + sp.fullSciName() + "</i>";
+            actualSciName = "";
+        }
 
         if(ph.type != null) {
-            outString = outString.replace("__NAME__", sp.name + " - " + ph.type);
+            outString = outString.replace("__NAME__", actualName + " - " + ph.type);
         } else {
-            outString = outString.replace("__NAME__", sp.name);
+            outString = outString.replace("__NAME__",actualName);
         }
         outString = outString.replace("__NAME2__", sp.name);
 
         if(!sp.sciName.isEmpty()) {
             outString = outString.replace("__SCINAME__", "<span class=\"details\">Scientific Name: </span><span class=\"sntitle\">" + sp.fullSciName() + "</span>");
-            outString = outString.replace("__SCINAME2__", sp.fullSciName());
+            outString = outString.replace("__SCINAME2__", actualSciName);
         } else {
             outString = outString.replace("__SCINAME__", "");
             outString = outString.replace("__SCINAME2__", "");
