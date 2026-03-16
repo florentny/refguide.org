@@ -146,8 +146,8 @@ class SpeciesTreeTest {
     }
 
     @Test
-    void testGetAlldangelingLeaf() {
-        List<String> leaves = tree.getAlldangelingLeaf(tree.depthFirstSearch("Biota"));
+    void testGetAllDangelingLeaf() {
+        List<String> leaves = tree.getAllDangelingLeaf(tree.depthFirstSearch("Biota"));
         assertTrue(leaves.isEmpty());
     }
 

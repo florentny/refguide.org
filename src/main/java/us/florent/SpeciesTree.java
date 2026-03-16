@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -255,7 +256,7 @@ public class SpeciesTree {
     }
 
     public Species findSpecies(String name) {
-        if(speciesMap == null)
+        if(speciesMap == null || !speciesMap.containsKey(name))
             return findSpecies(root, name);
         return speciesMap.get(name);
     }
@@ -383,11 +384,13 @@ public class SpeciesTree {
             throw new RuntimeException("Failed : HTTP error code : " + conn.getResponseCode());
         }
 
-        BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
-        StringBuilder sb = new StringBuilder();
-        String output;
-        while((output = br.readLine()) != null) {
-            sb.append(output);
+        StringBuilder sb;
+        try(BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())))) {
+            sb = new StringBuilder();
+            String output;
+            while((output = br.readLine()) != null) {
+                sb.append(output);
+            }
         }
         conn.disconnect();
         return sb.toString();
@@ -678,7 +681,7 @@ public class SpeciesTree {
         return true;
     }
 
-    public List<String> getAlldangelingLeaf(TreeNode<Taxon> node) {
+    public List<String> getAllDangelingLeaf(TreeNode<Taxon> node) {
         List<String> leaves = new ArrayList<>();
         if(node.getChildren().isEmpty()) {
             if(!node.getValue().getRank().equals("Species")) {
@@ -686,7 +689,7 @@ public class SpeciesTree {
             }
         } else {
             for(TreeNode<Taxon> child : node.getChildren()) {
-                leaves.addAll(getAlldangelingLeaf(child));
+                leaves.addAll(getAllDangelingLeaf(child));
             }
         }
         return leaves;
@@ -854,41 +857,67 @@ public class SpeciesTree {
 
 
     void worms() throws IOException {
-        var unknownSpecies = new ArrayList<String>();
+        var unknownSpecies = Collections.synchronizedList(new ArrayList<String>());
         List<String> speciesList = getAllSpeciesSciNAmes(root);
-        StringBuilder sb = new StringBuilder();
+        List<String> outputLines = Collections.synchronizedList(new ArrayList<>());
         AtomicInteger count = new AtomicInteger();
-        speciesList.stream().limit(5000).forEach(sp -> {
-            String wsp = sp.replace(" ", "%20");
-            try {
-                System.out.print(count.incrementAndGet() + "\t");
-                String id = getRestReply("https://www.marinespecies.org/rest/AphiaIDByName/" + wsp + "?marine_only=true&extant_only=true");
-                if(id.equals("-999")) {
-                    System.out.print(" *** ");
-                    id = getRestReply999("https://www.marinespecies.org/rest/AphiaRecordsByName/" + wsp + "?marine_only=true&extant_only=true");
-                    if(id == null) {
-                        throw new Exception("Species not found in WoRMS: " + sp);
+        var customPool = new ForkJoinPool(2);
+        try {
+            customPool.submit (() ->
+                speciesList.parallelStream().limit(5000).forEach(sp -> {
+                    String wsp = sp.replace(" ", "%20");
+                    try {
+                        String currentOutput = "";
+                        int currentCount = count.incrementAndGet();
+                        currentOutput += currentCount + "\t";
+                        System.out.print(currentCount + "\t");
+
+                        String id = getRestReply("https://www.marinespecies.org/rest/AphiaIDByName/" + wsp + "?marine_only=true&extant_only=true");
+                        if(id.equals("-999")) {
+                            System.out.print(" *** ");
+                            currentOutput += " *** ";
+                            id = getRestReply999("https://www.marinespecies.org/rest/AphiaRecordsByName/" + wsp + "?marine_only=true&extant_only=true");
+                            if(id == null) {
+                                throw new Exception("Species not found in WoRMS: " + sp);
+                            }
+                        }
+                        currentOutput += sp + "\t" + id + "\t";
+                        System.out.print(sp + "\t" + id + "\t");
+
+                        String rec = getRestReply("https://www.marinespecies.org/rest/AphiaRecordByAphiaID/" + id);
+                        JSONObject json = new JSONObject(rec);
+                        String status = json.get("status").toString();
+                        currentOutput += status + "\t";
+                        System.out.print(status + "\t");
+
+                        String taxon = getRestReply("https://www.marinespecies.org/rest/AphiaClassificationByAphiaID/" + id);
+                        currentOutput += taxon + "\n";
+                        System.out.println(taxon);
+
+                        outputLines.add(currentOutput);
+                    } catch(Exception e) {
+                        System.out.println("Species: " + sp + " UNKNOWN");
+                        unknownSpecies.add(sp);
                     }
+                })
+            ).get();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            customPool.shutdown();
+            try {
+                if (!customPool.awaitTermination(1, TimeUnit.MINUTES)) {
+                    System.err.println("Custom pool did not terminate in time.");
                 }
-                System.out.print(sp + "\t" + id + "\t");
-                sb.append(sp).append("\t").append(id).append("\t");
-                String rec = getRestReply("https://www.marinespecies.org/rest/AphiaRecordByAphiaID/" + id);
-                JSONObject json = new JSONObject(rec);
-                String status = json.get("status").toString();
-                System.out.print(status + "\t");
-                sb.append(status).append("\t");
-                String taxon = getRestReply("https://www.marinespecies.org/rest/AphiaClassificationByAphiaID/" + id);
-                System.out.println(taxon);
-                sb.append(taxon).append("\n");
-                TimeUnit.MILLISECONDS.sleep(100);
-            } catch(Exception e) {
-                System.out.println("Species: " + sp + " UNKNOWN");
-                unknownSpecies.add(sp);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        });
+        }
         unknownSpecies.forEach(s -> System.out.println("UNKNOWN: " + s));
         try(FileWriter writer = new FileWriter("/tmp/worms.txt")) {
-            writer.write(sb.toString());
+            for (String line : outputLines) {
+                writer.write(line);
+            }
         }
     }
 
@@ -911,12 +940,12 @@ public class SpeciesTree {
 
         speciesTree.exportTreeToCSV(speciesTree.root, "/home/fc/web/reef4/species.csv");
 
-        List<String> leafNames = speciesTree.getAlldangelingLeaf(speciesTree.root);
+        List<String> leafNames = speciesTree.getAllDangelingLeaf(speciesTree.root);
         leafNames.forEach(System.out::println);
         System.out.println();
         System.out.println();
 
-        System.exit(0);
+        //System.exit(0);
 
         StringBuilder out = new StringBuilder();
         speciesTree.printNodeJson(speciesTree.root, null, out);

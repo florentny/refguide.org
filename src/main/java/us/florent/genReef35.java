@@ -850,7 +850,7 @@ public class genReef35 {
             outString = outString.replace("__AKA__", "");
         }
         if(sp.note != null) {
-            outString = outString.replace("__NOTE__", "<span class=\"details\">" + "Note: " + processNote(sp.note) + "</span><br />");
+            outString = outString.replace("__NOTE__", "<span class=\"details\">"  + processNote(sp.note) + "</span><br />");
         } else {
             outString = outString.replace("__NOTE__", "");
         }
