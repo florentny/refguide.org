@@ -425,6 +425,8 @@ public class SpeciesTree {
 
         for(Document doc : sortedDocs) {
             String name = doc.get("name").toString();
+            if(name.equals("Biota"))
+                continue; // Skip root
             String rank = doc.get("rank").toString();
             String parent = doc.get("parent").toString();
             String category = doc.get("category") != null ? doc.get("category").toString() : null;
@@ -773,18 +775,18 @@ public class SpeciesTree {
             while((line = br.readLine()) != null) {
                 String[] fields = line.split("\t");
                 //System.out.println("Adding AphiaID " + fields[1] + " to " + fields[0]);
-                Species sp = findSpecies(root, fields[0]);
+                Species sp = findSpecies(root, fields[1].replace("*", "").trim());
                 if(sp == null) {
-                    System.out.println("worms.txt - Species not found: " + fields[0]);
+                    System.out.println("worms.txt - Species not found: " + fields[1]);
                     continue;
                 }
                 try {
-                    Integer.parseInt(fields[1]);
+                    Integer.parseInt(fields[2]);
                 } catch(NumberFormatException e) {
-                    System.out.println("Invalid AphiaID for species " + fields[0] + ": " + fields[1]);
+                    System.out.println("Invalid AphiaID for species " + fields[1] + ": " + fields[2]);
                     continue;
                 }
-                sp.setAphiaID(Integer.parseInt(fields[1]));
+                sp.setAphiaID(Integer.parseInt(fields[2]));
                 List<Taxon> list = getPathToSpecies(root, sp);
                 if(!isPathInRankOrder(list)) {
                     System.out.println("Path for " + sp.getName() + " is not in rank order: " + list);
@@ -795,13 +797,13 @@ public class SpeciesTree {
                 //System.out.println();
 
                 List<Taxon> result = new ArrayList<>();
-                JSONObject json = new JSONObject(fields[3]);
+                JSONObject json = new JSONObject(fields[4]);
                 collectNames(json, result);
                 //result.forEach(t -> System.out.print(t.getName() + "[}" + t.getRank() + "] - "));
                 //System.out.println();
 
-                //compareTaxonLists(sp.getName(), list, result);
-                compareTaxonLists(sp.getName(), result, list);
+                compareTaxonLists(sp.getName(), list, result);
+                //compareTaxonLists(sp.getName(), result, list);
 
             }
         } catch(IOException e) {
