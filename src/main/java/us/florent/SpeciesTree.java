@@ -46,7 +46,7 @@ public class SpeciesTree {
 
     List<TreeNode<Taxon>> families;
 
-    Map<String, Species> speciesMap;
+    Map<String, SpeciesNode> speciesMap;
 
     public static class Taxon {
         private String name;
@@ -118,7 +118,7 @@ public class SpeciesTree {
         }
     }
 
-    public static class Species extends Taxon {
+    public static class SpeciesNode extends Taxon {
 
         String id = null;
         String genus = null;
@@ -127,7 +127,7 @@ public class SpeciesTree {
         String subgenus = null;
         List<Taxon> path;
 
-        public Species(String name, String rank) {
+        public SpeciesNode(String name, String rank) {
             super(name, rank);
         }
 
@@ -234,10 +234,10 @@ public class SpeciesTree {
         return null; // Not found
     }
 
-    public Species findSpecies(TreeNode<Taxon> node, String name) {
+    public SpeciesNode findSpecies(TreeNode<Taxon> node, String name) {
         if(node == null)
             return null;
-        if(node.getValue() instanceof Species sp) {
+        if(node.getValue() instanceof SpeciesNode sp) {
             if(sp.getSciName().equals(name))
                 return sp;
             if(sp.getName().equals(name))
@@ -255,7 +255,7 @@ public class SpeciesTree {
         return null; // Not found
     }
 
-    public Species findSpecies(String name) {
+    public SpeciesNode findSpecies(String name) {
         if(speciesMap == null || !speciesMap.containsKey(name))
             return findSpecies(root, name);
         return speciesMap.get(name);
@@ -279,14 +279,14 @@ public class SpeciesTree {
         }
         // Check if the species already exists
         for(TreeNode<Taxon> child : genusNode.getChildren()) {
-            if(child.getValue() instanceof Species species) {
+            if(child.getValue() instanceof SpeciesNode species) {
                 if(species.epithet.equals(epithet)) {
                     System.out.println("Species already exists: " + speciesName);
                     return child;
                 }
             }
         }
-        Species sp = new Species(speciesName, "Species");
+        SpeciesNode sp = new SpeciesNode(speciesName, "Species");
         sp.genus = genus;
         sp.epithet = epithet;
         sp.subgenus = subgenus;
@@ -312,7 +312,7 @@ public class SpeciesTree {
                     return child;
                 }
             }
-            TreeNode<Taxon> leaf = leafRank.equals("Species") ? new TreeNode<>(new Species(leafName, leafRank)) : new TreeNode<>(new Taxon(leafName, leafRank));
+            TreeNode<Taxon> leaf = leafRank.equals("Species") ? new TreeNode<>(new SpeciesNode(leafName, leafRank)) : new TreeNode<>(new Taxon(leafName, leafRank));
             parent.addChild(leaf);
             return leaf;
         }
@@ -467,9 +467,9 @@ public class SpeciesTree {
                 System.out.println("Failed to add species: " + doc.get("id").toString() + " - " + doc.get("Name").toString());
                 continue;
             }
-            speciesMap.put(sp.getValue().getName(), (Species) sp.getValue());
-            speciesMap.put(((Species)sp.getValue()).getId(), (Species) sp.getValue());
-            speciesMap.put(doc.get("sciName").toString(), (Species) sp.getValue());
+            speciesMap.put(sp.getValue().getName(), (SpeciesNode) sp.getValue());
+            speciesMap.put(((SpeciesNode)sp.getValue()).getId(), (SpeciesNode) sp.getValue());
+            speciesMap.put(doc.get("sciName").toString(), (SpeciesNode) sp.getValue());
             setSpeciesCategory(sp);
         }
         sortTreeByName(depthFirstSearch(root, "Biota"));
@@ -492,8 +492,8 @@ public class SpeciesTree {
     }
 
     public String getLastCategoryForSpeciesId(String speciesId) {
-        //Species sp = findSpecies(root, speciesId);
-        Species sp = findSpecies(speciesId);
+        //SpeciesNode sp = findSpecies(root, speciesId);
+        SpeciesNode sp = findSpecies(speciesId);
         if (sp == null)
             return null;
         List<Taxon> path = getPathToSpecies(root, sp);
@@ -507,7 +507,7 @@ public class SpeciesTree {
     }
 
     public String getCategoryForSpeciesId(String speciesId) {
-        Species sp = findSpecies(speciesId);
+        SpeciesNode sp = findSpecies(speciesId);
         if (sp == null)
             return null;
         if(sp.getCategory() != null)
@@ -541,13 +541,13 @@ public class SpeciesTree {
         return families;
     }
 
-    public List<Species> getAllSpeciesBelowCategory(String category) {
-        List<Species> speciesList = new ArrayList<>();
+    public List<SpeciesNode> getAllSpeciesBelowCategory(String category) {
+        List<SpeciesNode> speciesList = new ArrayList<>();
         collectSpeciesBelowCategory(root, category, speciesList);
         return speciesList;
     }
 
-    private void collectSpeciesBelowCategory(TreeNode<Taxon> node, String category, List<Species> speciesList) {
+    private void collectSpeciesBelowCategory(TreeNode<Taxon> node, String category, List<SpeciesNode> speciesList) {
         if (category.equals(node.getValue().getCategory())) {
             collectAllSpecies(node, speciesList, category, true);
         } else {
@@ -557,8 +557,8 @@ public class SpeciesTree {
         }
     }
 
-    private void collectAllSpecies(TreeNode<Taxon> node, List<Species> speciesList, String category, boolean found) {
-        if(node.getValue() instanceof Species sp) {
+    private void collectAllSpecies(TreeNode<Taxon> node, List<SpeciesNode> speciesList, String category, boolean found) {
+        if(node.getValue() instanceof SpeciesNode sp) {
             if(found)
                 speciesList.add(sp);
         }
@@ -584,7 +584,7 @@ public class SpeciesTree {
         jsonOutput.append(obj).append("\n");
 
         for(TreeNode<Taxon> child : node.getChildren()) {
-            if(child.getValue() instanceof Species
+            if(child.getValue() instanceof SpeciesNode
                     //|| child.getValue().getRank().equals("Subfamily")
                     || child.getValue().getRank().equals("Genus")) {
                 continue;
@@ -623,7 +623,7 @@ public class SpeciesTree {
             indent += "│ ";
         }
 
-        if(node.getValue() instanceof Species species) {
+        if(node.getValue() instanceof SpeciesNode species) {
             out.append(species.getShortSciName()).append(" -  ").append(species.getName()).append("\n");
         } else {
             String cat = (node.getValue().getCategory() == null) ? "" : " [" + node.getValue().getCategory() + "]";
@@ -659,7 +659,7 @@ public class SpeciesTree {
             System.out.println("Unknown rank: " + node.getValue().getRank() + " for " + node.getValue().getName());
         if(!Objects.isNull(node.getValue().getCategory()))
             path.set(ranks.indexOf("Category"), node.getValue().getCategory());
-        if(node.getValue() instanceof Species) {
+        if(node.getValue() instanceof SpeciesNode) {
             path.set(ranks.indexOf("Common Name"), node.getValue().getName());
         }
 
@@ -698,11 +698,11 @@ public class SpeciesTree {
     }
 
     public List<Taxon> getPathToSpecies(String species) {
-        Species sp = findSpecies(root, species);
+        SpeciesNode sp = findSpecies(root, species);
         return getPathToSpecies(root, sp);
     }
 
-    public List<Taxon> getPathToSpecies(TreeNode<Taxon> node, Species species) {
+    public List<Taxon> getPathToSpecies(TreeNode<Taxon> node, SpeciesNode species) {
         List<Taxon> path = new ArrayList<>();
         if(findPathHelper(node, species, path)) {
             return path;
@@ -710,9 +710,9 @@ public class SpeciesTree {
         return Collections.emptyList(); // Not found
     }
 
-    private boolean findPathHelper(TreeNode<Taxon> node, Species species, List<Taxon> path) {
+    private boolean findPathHelper(TreeNode<Taxon> node, SpeciesNode species, List<Taxon> path) {
         path.add(node.getValue());
-        if(node.getValue() instanceof Species sp && sp.equals(species)) {
+        if(node.getValue() instanceof SpeciesNode sp && sp.equals(species)) {
             return true;
         }
         for(TreeNode<Taxon> child : node.getChildren()) {
@@ -729,7 +729,7 @@ public class SpeciesTree {
         List<String> leaves = new ArrayList<>();
         if(node.getChildren().isEmpty()) {
             if(node.getValue().getRank().equals("Species")) {
-                Species sp = (Species) node.getValue();
+                SpeciesNode sp = (SpeciesNode) node.getValue();
                 leaves.add(sp.getSciName());
             }
         } else {
@@ -758,7 +758,7 @@ public class SpeciesTree {
     private int computeNumSpecies(TreeNode<Taxon> node) {
         if(node == null) return 0;
         int count = 0;
-        if(node.getValue() instanceof Species) {
+        if(node.getValue() instanceof SpeciesNode) {
             count = 1;
         }
         for(TreeNode<Taxon> child : node.getChildren()) {
@@ -775,7 +775,7 @@ public class SpeciesTree {
             while((line = br.readLine()) != null) {
                 String[] fields = line.split("\t");
                 //System.out.println("Adding AphiaID " + fields[1] + " to " + fields[0]);
-                Species sp = findSpecies(root, fields[1].replace("*", "").trim());
+                SpeciesNode sp = findSpecies(root, fields[1].replace("*", "").trim());
                 if(sp == null) {
                     System.out.println("worms.txt - Species not found: " + fields[1]);
                     continue;
@@ -947,7 +947,7 @@ public class SpeciesTree {
         System.out.println();
         System.out.println();
 
-        //System.exit(0);
+        System.exit(0);
 
         StringBuilder out = new StringBuilder();
         speciesTree.printNodeJson(speciesTree.root, null, out);

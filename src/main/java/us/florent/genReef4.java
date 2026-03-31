@@ -174,7 +174,7 @@ public class genReef4 {
         }
 
         List<String> getSpeciesNameFromCat(String category) {
-            return speciesTree.getAllSpeciesBelowCategory(category).stream().map(SpeciesTree.Species::getOrgGenus).distinct()
+            return speciesTree.getAllSpeciesBelowCategory(category).stream().map(SpeciesTree.SpeciesNode::getOrgGenus).distinct()
                     .flatMap(s -> species_collection.getSpeciesFromGenus(s).stream()).collect(Collectors.toList());
         }
 
@@ -338,16 +338,11 @@ public class genReef4 {
 
             writeToFile(outString, basepathIndexAll + "/search.html");
 
-            outString = readFile("unknow.html");
-            outString = outString.replace("__MAIN__", getUnknowSpecies(path + "/config/unknow.txt"));
-
             if(analytics) {
                 outString = outString.replace("__ANALYTICS__", readFile("analytics.xml"));
             } else {
                 outString = outString.replace("__ANALYTICS__", "");
             }
-
-            writeToFile(outString, basepathIndexAll + "/unknow.html");
 
         } catch(IOException ex) {
             java.util.logging.Logger.getLogger(genReef4.class.getName()).log(Level.SEVERE, null, ex);
@@ -1561,9 +1556,8 @@ public class genReef4 {
             reef.basepathIndexAll = args[0];
         }
 
-        //reef.createSite(genReef35.configpath + "/clean", false);
-        reef.createSite(reef.basepathIndexAll, true);
-        //reef.createSite(genReef35.configpath, false);
+        reef.createSite(reef.basepathIndexAll, false);
+        //reef.createSite(reef.basepathIndexAll, true);;
         reef.closeMongoDB();
     }
 
@@ -1579,50 +1573,4 @@ public class genReef4 {
             fnfe.printStackTrace();
         }
     }
-
-
-    protected String getUnknowSpecies(String config) throws IOException {
-        StringBuilder str = new StringBuilder();
-
-        java.io.BufferedReader file = new java.io.BufferedReader(new java.io.FileReader(config));
-        String line;
-        while((line = file.readLine()) != null) {
-            String[] field = line.split(":");
-            String img = field[0];
-            String cat = field[1];
-            String loc = field[2];
-            String depth = "";
-            String size = "";
-            String comment = "";
-            if(field.length > 3)
-                depth = field[3];
-            if(field.length > 4)
-                size = field[4];
-            if(field.length > 5)
-                comment = field[5];
-            String id = img.replace("IMG_", "").replace(".JPG", "");
-            str.append("<div class=\"tblock\"><div class =\"utitle\"><span>").append(cat).append(" #").append(id).append("</span>&nbsp;");
-            str.append("<a href=\"mailto:id@reefguide.org?subject=ID for species ").append(cat).append("#").append(id).append("\"><img style=\"vertical-align: middle;\" title=\"\" alt=\"\" src=\"unknown/Mail-icon.png\" /></a></div>");
-            str.append("<div class=\"pix\"><a class=\"single_image\" href=\"unknown/").append(img).append("\"><img title=\"\" alt=\"\" src=\"unknown/thumb2/").append(img).append("\" /></a></div>");
-            str.append("<div class=\"comment\">Location: ").append(loc).append("</div>");
-            if(!depth.isEmpty())
-                str.append("<div class=\"comment\">Depth: ").append(depth).append(" ft.</div>");
-            if(!size.isEmpty())
-                str.append("<div class=\"comment\">Size: ").append(size).append("</div>");
-            if(!comment.isEmpty())
-                str.append("<div class=\"comment\">").append(comment).append("</div>");
-            if(depth.isEmpty())
-                str.append("<div class=\"comment\">&nbsp</div>\n");
-            if(size.isEmpty())
-                str.append("<div class=\"comment\">&nbsp</div>\n");
-            if(comment.isEmpty())
-                str.append("<div class=\"comment\">&nbsp</div>\n");
-            str.append("</div>\n");
-
-        }
-
-
-        return str.toString();
-    }
-
 }
