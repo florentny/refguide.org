@@ -68,80 +68,93 @@ function creategrid() {
     let from = 0;
     let catIndex = 0;
     let imageRow, nameRow;
+    let pendingHeaders = [];
+    let catSpansMultipleRows = false;
 
-    for (let i = 0; i < numpix; i++) {
-        // At the start of each row, insert category headers
-        if (colpos === 0) {
+    function flushRow(upTo) {
+        if (pendingHeaders.length > 0) {
             const headerRow = document.createElement("div");
             headerRow.className = "grid-row";
             headerRow.style.gridTemplateColumns = `repeat(${numCol}, 1fr)`;
 
-            const end = Math.min(i + numCol, numpix);
-            let j = i;
+            for (let k = 0; k < pendingHeaders.length; k++) {
+                const h = pendingHeaders[k];
+                const nextStart = (k + 1 < pendingHeaders.length)
+                    ? pendingHeaders[k + 1].startCol : colpos;
+                const span = nextStart - h.startCol;
 
-            while (j < end) {
-                let span = 1;
-                let dispHeader = false;
-                let newCat = false;
-
-                if (i !== 0 && j === i && catIndex > 0) {
-                    if (ref_reef[catIndex] < end) {
-                        dispHeader = true;
-                        span = ref_reef[catIndex] - j;
-                    } else if (ref_reef[catIndex - 1] > (j - numCol)) {
-                        dispHeader = true;
-                        span = Math.min(numCol, end - j);
-                    }
+                const catDiv = document.createElement("div");
+                catDiv.className = "catheader";
+                if (h.showId) {
+                    catDiv.id = h.name.replace(/ /g, "_");
                 }
+                catDiv.style.gridColumn = `span ${span}`;
 
-                if (ref_reef[catIndex] === j) {
-                    dispHeader = true;
-                    newCat = true;
-                    span = (ref_reef[catIndex + 1] >= i + numCol)
-                        ? i + numCol - j
-                        : ref_reef[catIndex + 1] - j;
-                }
+                const link = document.createElement("a");
+                link.href = h.name.replace(/ /g, "_") + ".html";
+                link.textContent = h.name;
+                catDiv.appendChild(link);
+                headerRow.appendChild(catDiv);
+            }
+            container.appendChild(headerRow);
+            pendingHeaders = [];
+        }
 
-                if (dispHeader) {
-                    const cell = document.createElement("div");
-                    cell.className = "catrow";
-                    cell.style.gridColumn = `span ${span}`;
+        container.appendChild(imageRow);
+        for (let j = from; j <= upTo; j++) {
+            const nameCell = document.createElement("div");
+            nameCell.className = "nameid";
+            nameCell.style.width = imgWidth + "px";
 
-                    const catDiv = document.createElement("div");
-                    catDiv.className = "catheader";
+            const nameLink = document.createElement("a");
+            nameLink.className = "nameid";
+            nameLink.href = link_reef[j];
+            nameLink.textContent = name_reef[j];
 
-                    const catName = newCat ? cat_reef[catIndex] : cat_reef[catIndex - 1];
-                    if (newCat && i !== 0) {
-                        catDiv.id = catName.replace(/ /g, "_");
-                    }
+            const nameDiv = document.createElement("div");
+            nameDiv.className = "nameid";
+            nameDiv.appendChild(nameLink);
+            nameCell.appendChild(nameDiv);
+            nameRow.appendChild(nameCell);
+        }
+        container.appendChild(nameRow);
+    }
 
-                    const link = document.createElement("a");
-                    link.href = catName.replace(/ /g, "_") + ".html";
-                    link.textContent = catName;
-                    catDiv.appendChild(link);
-                    cell.appendChild(catDiv);
-                    headerRow.appendChild(cell);
+    function startNewRow() {
+        imageRow = document.createElement("div");
+        imageRow.className = "grid-row";
+        imageRow.style.gridTemplateColumns = `repeat(${numCol}, 1fr)`;
 
-                    if (newCat) catIndex++;
-                    j += span;
-                } else {
-                    const cell = document.createElement("div");
-                    cell.className = "catrow";
-                    cell.style.gridColumn = `span ${span}`;
-                    headerRow.appendChild(cell);
-                    j += span;
+        nameRow = document.createElement("div");
+        nameRow.className = "grid-row";
+        nameRow.style.gridTemplateColumns = `repeat(${numCol}, 1fr)`;
+    }
+
+    for (let i = 0; i < numpix; i++) {
+        if (ref_reef[catIndex] === i) {
+            const newCatSize = ((catIndex + 1 < ref_reef.length)
+                ? ref_reef[catIndex + 1] : numpix) - i;
+
+            if (colpos > 0) {
+                const remaining = numCol - colpos;
+                if (catSpansMultipleRows || newCatSize > remaining) {
+                    flushRow(i - 1);
+                    from = i;
+                    colpos = 0;
                 }
             }
 
-            container.appendChild(headerRow);
+            pendingHeaders.push({
+                name: cat_reef[catIndex],
+                startCol: colpos,
+                showId: catIndex > 0
+            });
+            catSpansMultipleRows = false;
+            catIndex++;
+        }
 
-            imageRow = document.createElement("div");
-            imageRow.className = "grid-row";
-            imageRow.style.gridTemplateColumns = `repeat(${numCol}, 1fr)`;
-
-            nameRow = document.createElement("div");
-            nameRow.className = "grid-row";
-            nameRow.style.gridTemplateColumns = `repeat(${numCol}, 1fr)`;
+        if (colpos === 0) {
+            startNewRow();
         }
 
         const imgCell = document.createElement("div");
@@ -163,27 +176,11 @@ function creategrid() {
 
         colpos++;
         if (colpos === numCol || i === numpix - 1) {
-            container.appendChild(imageRow);
-
-            for (let j = from; j <= i; j++) {
-                const nameCell = document.createElement("div");
-                nameCell.className = "nameid";
-                nameCell.style.width = imgWidth + "px";
-
-                const nameLink = document.createElement("a");
-                nameLink.className = "nameid";
-                nameLink.href = link_reef[j];
-                nameLink.textContent = name_reef[j];
-
-                const nameDiv = document.createElement("div");
-                nameDiv.className = "nameid";
-                nameDiv.appendChild(nameLink);
-                nameCell.appendChild(nameDiv);
-                nameRow.appendChild(nameCell);
-            }
-            container.appendChild(nameRow);
-
+            flushRow(i);
             from = i + 1;
+            if (colpos === numCol && i < numpix - 1) {
+                catSpansMultipleRows = true;
+            }
             colpos = 0;
         }
     }
