@@ -1225,29 +1225,28 @@ public class genReef4 {
         outString = outString.replace("__TREEMENU__", treeMenu);
 
         StringBuilder html = new StringBuilder();
-        html.append("<tbody>");
         subdir = "";
         int col = 0;
         for(var sp : g.species) {
             var cat = species_collection.getCat(sp.id());
             if(!subdir.equals(cat)) {
                 if(!subdir.isEmpty()) {
-                    html.append("</tr></table>");
+                    html.append("</div>\n");
                 }
                 subdir = cat;
-                html.append("<tr><td><div class=\"catheader\"><a href=\"").append(subdir.replace(" ", "_")).append(".html\">").append(subdir).append("</a></div></td></tr>\n");
-                html.append("<tr><td><table><tr>");
+                html.append("<div class=\"catheader\"><a href=\"").append(subdir.replace(" ", "_")).append(".html\">").append(subdir).append("</a></div>\n");
+                html.append("<div class=\"grid-row\" style=\"grid-template-columns: repeat(3, 1fr)\">");
                 col = 0;
                 title.append(" - ").append(subdir);
             }
             if((col != 0) && ((col % 3) == 0)) {
-                html.append("</tr></table><table><tr>");
+                html.append("</div>\n<div class=\"grid-row\" style=\"grid-template-columns: repeat(3, 1fr)\">");
             }
-            html.append("<td><img src=\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().getFirst()).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.fullSciName()).append("\" title=\"").append(sp.name).append(" - ").append(sp.fullSciName()).append("\" />\n");
-            html.append("<br /><div class=\"nameid\"><a href=\"").append(sp.id).append(".html\">").append(sp.name).append("</a></div></td>");
+            html.append("<div class=\"celltd\" style=\"flex-direction: column\"><img src=\"").append(base).append("pix/thumb/").append(sp.id).append(sp.thumbs().getFirst()).append(".jpg\" alt=\"").append(sp.name).append(" - ").append(sp.fullSciName()).append("\" title=\"").append(sp.name).append(" - ").append(sp.fullSciName()).append("\" />\n");
+            html.append("<div class=\"nameid\"><a href=\"").append(sp.id).append(".html\">").append(sp.name).append("</a></div></div>");
             col++;
         }
-        html.append("</tr></table></td></tr></tbody>\n");
+        html.append("</div>\n");
 
         outString = outString.replace("__INDEX_HTML__", html.toString());
         outString = outString.replace("__TITLE__", title.toString());

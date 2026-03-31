@@ -238,32 +238,41 @@ div.homesel {
     color: green;
 }
 
+.grid-row {
+    display: grid;
+    align-items: center;
+}
+
 .celltd {
-    height: 170px;
+    min-height: 170px;
     text-align: center;
-    vertical-align: middle;
-    width: 240px
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .celltdbig {
-    height: 260px;
+    min-height: 260px;
     text-align: center;
-    vertical-align: middle;
-    width: 400px
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .celltdbig1 {
-    height: 203px;
+    min-height: 203px;
     text-align: center;
-    vertical-align: middle;
-    width: 316px
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .celltdsmall {
-    height: 115px;
+    min-height: 115px;
     text-align: center;
-    vertical-align: middle;
-    width: 160px
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 
