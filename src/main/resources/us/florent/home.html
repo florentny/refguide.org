@@ -5,7 +5,9 @@
     <title>Florent's Guide To The Tropical Reefs - Fish, Creatures and Corals</title>
 
     <script type="text/javascript" src="jquery/js/jquery-1.7.1.min.js"></script>
-    <script type="text/javascript" src="jquery/js/jquery-ui-1.8.16.custom.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script type="text/javascript" src="js/TopNav.js"></script>
     <script type="text/javascript" src="js/mainindex.js"></script>
 
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.32/angular.js"></script>
@@ -17,6 +19,15 @@
     <link rel="stylesheet" type="text/css" href="css/search.css" />
     <link rel="stylesheet" type="text/css" href="css/home.css" />
 
+    <script type="text/javascript">
+        var navItems = [
+            { label: 'Home', href: 'home.html' },
+            { label: 'Latest Updates', href: 'latest.html' },
+            { label: 'About', href: 'about.html' },
+            { label: 'RSS', href: 'http://reefguide.org/reefguide.xml' },
+            { label: 'Search Species', href: 'search.html' }
+        ];
+    </script>
 
     <!--
        Web site design and all photographs copyright 2004-2026 Florent Charpin. All rights reserved. Email: www@reefguide.org
@@ -39,24 +50,7 @@
         <h4>Florent's Guide To The</h4>
         <h1>Tropical Reefs</h1>
 
-        <ul class="topnav">
-            <li class="ba">
-                <a href="home.html">Home</a>
-            </li>
-
-            <li class="ba">
-                <a href="latest.html">Latest Updates</a>
-            </li>
-            <li class="ba">
-                <a href="about.html">About</a>
-            </li>
-            <li class="ba">
-                <a href="http://reefguide.org/reefguide.xml">RSS</a>
-            </li>
-            <li class="ba">
-                <a href="search.html">Search Species</a>
-            </li>
-        </ul>
+        <div id="topnav-root"></div>
 
     </div>
 

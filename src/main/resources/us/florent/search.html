@@ -5,7 +5,9 @@
         <title>Florent's Guide To The Tropical Reefs - Search - Fish, Creatures and Corals species</title>
 
         <script type="text/javascript" src="jquery/js/jquery-1.7.1.min.js"></script>
-        <script type="text/javascript" src="jquery/js/jquery-ui-1.8.16.custom.min.js"></script>
+        <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+        <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+        <script type="text/javascript" src="js/TopNav.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.32/angular.js"></script>
         <script src="js/controllers.js"></script>
         <script type="text/javascript" src="js/mainindex.js"></script>
@@ -14,7 +16,16 @@
         <link rel="stylesheet" type="text/css" href="css/all.css" />
         <link rel="stylesheet" type="text/css" href="css/index.css" />
         <link rel="stylesheet" type="text/css" href="css/search.css" />
-        
+
+        <script type="text/javascript">
+            var navItems = [
+                { label: 'Home', href: 'home.html' },
+                { label: 'Latest Updates', href: 'latest.html' },
+                { label: 'About', href: 'about.html' },
+                { label: 'RSS', href: 'http://reefguide.org/reefguide.xml' }
+            ];
+        </script>
+
          __ANALYTICS__
 
     </head>
@@ -31,21 +42,7 @@
                 <h4>Florent's Guide To The</h4>
                 <h1>Tropical Reefs</h1>
 
-                <ul class="topnav">
-                    <li class="ba">
-                        <a  href="home.html">Home</a>
-                    </li>
-
-                    <li class="ba">
-                        <a href="latest.html">Latest Updates</a>
-                    </li>
-                    <li class="ba">
-                        <a href="about.html">About</a>
-                    </li>
-                    <li class="ba">
-                        <a href="http://reefguide.org/reefguide.xml">RSS</a>
-                    </li>
-                </ul>
+                <div id="topnav-root"></div>
 
             </div>
 
@@ -53,10 +50,10 @@
 
                 <br />
                 <div class="searchpanel">
-                <br />    
+                <br />
                 <div style="margin: auto; text-align: center;">Search:&nbsp;<input ng-model="query" ng-change="queryChanged()"> &nbsp;&nbsp;&nbsp;Region:&nbsp;<select ng-change="regionChanged()" ng-model="selRegion" ng-options="region.name for region in regions"></select>
                     &nbsp;<img ng-hide="busyIndicator" src="images/loading2.gif" id="loading-indicator" /><img ng-show="busyIndicator" src="images/loading.gif" id="loading-indicator" /></div><br />
-                
+
                 <table class="result">
                     <thead class="result">
                         <tr>
@@ -68,7 +65,7 @@
                     </thead>
                     <tbody ng-repeat="species in filtered = (speciesList | filter:ReefSearch  | limitTo:querycharacters)">
                     <tr class="red"  ng-class-even="'even'" ng-click="details = !details;thumb = doShow(species)" ng-hide="details">
-                        <td>&nbsp;&nbsp;</td><td>{{species.fullname}}</td><td><i>{{species.sname}}</i></td><td>{{species.subcategory}}</td>     
+                        <td>&nbsp;&nbsp;</td><td>{{species.fullname}}</td><td><i>{{species.sname}}</i></td><td>{{species.subcategory}}</td>
                     </tr><tr ng-class-even="'even'" ng-click="details = !details">
                         <td colspan="4" ng-show="details">
                             <div style="display:inline-block;"><img class="thumb" style="height:80px;"  ng-src="{{thumb}}" /></div>
@@ -91,7 +88,7 @@
                     email: &#119;&#119;&#119;&#064;&#114;&#101;&#101;&#102;&#103;&#117;&#105;&#100;&#101;&#046;&#111;&#114;&#103;
                 </div>
                 <br />
-            
+
                  </div>
 
         </div>

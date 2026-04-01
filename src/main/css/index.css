@@ -123,6 +123,7 @@ ul.menusec1 li ul a {
 
 ul.menusec1 li ul li.selactive {
     background: #fff;
+    color: #000;
     padding: 0px;
     margin: 0px;
     border-left: 3px red solid;
@@ -132,6 +133,46 @@ ul.menusec1 li ul li.selactive {
     font-style: italic;
 }
 
+
+/* React Accordion header styles */
+.accordion-header {
+    cursor: pointer;
+    margin: 0;
+    padding: 5px 10px;
+    background: #f6f6f6;
+    border: 1px solid #ddd;
+    border-bottom: 0;
+    font-size: 14px;
+    font-weight: bold;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+.accordion-header:last-of-type {
+    border-bottom: 1px solid #ddd;
+}
+
+.accordion-header a {
+    color: #1c94c4;
+    text-decoration: none;
+    display: block;
+}
+
+.accordion-header:hover {
+    background: #e8e8e8;
+}
+
+.accordion-header-active {
+    background: #ddd;
+    border-bottom: 1px solid #ddd;
+}
+
+.accordion-content {
+    border: 1px solid #ddd;
+    border-top: 0;
+    padding: 5px 0;
+    background: #fff;
+    color: #000;
+}
 
 .catheader {
     border-top: #dcd637 2px solid;

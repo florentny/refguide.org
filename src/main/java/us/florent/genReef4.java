@@ -731,6 +731,7 @@ public class genReef4 {
         outString = outString.replace("__REEF__", reefName[reefRef]);
         outString = outString.replace("__PRENAME__", preName);
         outString = outString.replace("__BASE__", base);
+        outString = outString.replace("__REEFREF__", Integer.toString(reefRef));
         outString = outString.replace("__BANNER__", header);
 
         if(analytics) {
@@ -1219,10 +1220,8 @@ public class genReef4 {
             outString = outString.replace("__ANALYTICS__", "");
         }
 
-        int[] active = new int[1];
-        active[0] = -1;
-        String treeMenu = buildTreeMenu(indexName, active);
-        outString = outString.replace("__TREEMENU__", treeMenu);
+        String treeMenuJson = buildTreeMenuJson(indexName);
+        outString = outString.replace("__TREEMENU_JSON__", treeMenuJson);
 
         StringBuilder html = new StringBuilder();
         subdir = "";
@@ -1251,7 +1250,7 @@ public class genReef4 {
         outString = outString.replace("__INDEX_HTML__", html.toString());
         outString = outString.replace("__TITLE__", title.toString());
 
-        outString = outString.replace("__ACTIVE__", Integer.toString(active[0]));
+        // activeSel is now embedded in treeMenuData JSON
 
         writeToFile(outString, baseIndex + "/" + indexName);
     }
@@ -1276,6 +1275,7 @@ public class genReef4 {
         String outString = readFile("index_catalog.html");
 
         outString = processSelectedGuideMenu(outString, reefRef);
+        outString = outString.replace("__REEFREF__", Integer.toString(reefRef));
         outString = outString.replace("__BANNER__", header);
 
         sp_list.forEach(sp -> {
@@ -1330,6 +1330,7 @@ public class genReef4 {
 
         outString = readFile("index_catalog.html");
         outString = processSelectedGuideMenu(outString, reefRef);
+        outString = outString.replace("__REEFREF__", Integer.toString(reefRef));
         outString = outString.replace("__BANNER__", header);
         html = new StringBuilder();
         alpha = '.';
@@ -1372,6 +1373,7 @@ public class genReef4 {
 
         outString = readFile("index_catalog.html");
         outString = processSelectedGuideMenu(outString, reefRef);
+        outString = outString.replace("__REEFREF__", Integer.toString(reefRef));
         outString = outString.replace("__BANNER__", header);
         html = new StringBuilder();
         String curgrp = "";
@@ -1509,6 +1511,125 @@ public class genReef4 {
         ret = ret.replaceAll("_ULFAMOPEN_.*_", "<ul>");
 
         return ret;
+    }
+
+    private String buildTreeMenuJson(String name) {
+        StringBuilder json = new StringBuilder();
+        json.append("{\"sections\":[");
+
+        String speciesClass = "";
+        boolean singleClass = false;
+        int ul_fam_open_counter = 0;
+        int ul_fam_open = 0;
+        int activeSection = -1;
+        int sectionIndex = -1;
+        boolean firstSection = true;
+        boolean firstFamily = true;
+        boolean firstPage = true;
+
+        for (page elem : pageList) {
+            if (elem.species.isEmpty())
+                continue;
+
+            String currentClass = getSpeciesClass(species_collection.getCat(elem.species.getFirst().id));
+
+            if (!Objects.equals(currentClass, speciesClass)) {
+                // Close previous family and section
+                if (!speciesClass.isEmpty()) {
+                    json.append("]}]}");  // close pages array + family, families array + section
+                }
+                speciesClass = currentClass;
+                singleClass = isSingleList(Objects.requireNonNull(speciesClass));
+                sectionIndex++;
+                firstFamily = true;
+
+                if (!firstSection) json.append(",");
+                firstSection = false;
+                json.append("{\"name\":").append(jsonString(speciesClass)).append(",\"families\":[");
+            }
+
+            if (elem.page == 1) {
+                // Close previous family
+                if (!firstFamily) {
+                    json.append("]},");  // close pages array, family
+                } else {
+                    firstFamily = false;
+                }
+                ul_fam_open_counter++;
+                firstPage = true;
+
+                json.append("{\"name\":").append(jsonString(elem.name));
+                json.append(",\"single\":").append(singleClass);
+                // open flag will be set after we know which family is active
+                json.append(",\"familyIndex\":").append(ul_fam_open_counter);
+                json.append(",\"pages\":[");
+            }
+
+            boolean active = name.equals("index" + elem.index + ".html");
+            if (active) {
+                ul_fam_open = ul_fam_open_counter;
+                activeSection = sectionIndex;
+            }
+
+            if (!firstPage) json.append(",");
+            firstPage = false;
+
+            json.append("{\"href\":\"index").append(elem.index).append(".html\"");
+            json.append(",\"active\":").append(active);
+            json.append(",\"categories\":[");
+
+            String prev = "";
+            boolean firstCat = true;
+            for (Species sp : elem.species) {
+                var cat = species_collection.getCat(sp.id());
+                cat = elem.group.get(cat);
+                if (prev == null) continue;
+                if (!prev.equals(cat)) {
+                    prev = cat;
+                    if (!firstCat) json.append(",");
+                    firstCat = false;
+                    json.append(jsonString(prev));
+                }
+            }
+            json.append("]}");
+        }
+
+        // Close last family and section
+        if (!speciesClass.isEmpty()) {
+            json.append("]}]}");
+        }
+
+        json.append("],\"activeSection\":").append(activeSection).append("}");
+
+        // Post-process: set open flag on the active family
+        String result = json.toString();
+        if (ul_fam_open > 0) {
+            result = result.replace("\"familyIndex\":" + ul_fam_open + ",", "\"open\":true,");
+        }
+        result = result.replaceAll("\"familyIndex\":\\d+,", "\"open\":false,");
+
+        return result;
+    }
+
+    private static String jsonString(String s) {
+        if (s == null) return "null";
+        // Unescape HTML entities before encoding as JSON
+        s = s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+             .replace("&quot;", "\"").replace("&#39;", "'");
+        StringBuilder sb = new StringBuilder("\"");
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '"': sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                default: sb.append(c);
+            }
+        }
+        sb.append("\"");
+        return sb.toString();
     }
 
 
