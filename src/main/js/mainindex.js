@@ -30,14 +30,14 @@ function mainInit() {
         goToByScroll(hash);
     }
 
-    $(window).resize(creategrid);
+    window.addEventListener('resize', creategrid);
 
-    $scrollingDiv = $("#accordion-root");
-    if ($scrollingDiv.length) {
-        $divpos = Math.round($scrollingDiv.position().top - 15);
+    $scrollingDiv = document.getElementById('accordion-root');
+    if ($scrollingDiv) {
+        $divpos = Math.round($scrollingDiv.getBoundingClientRect().top + window.pageYOffset - 15);
         $margin = 0;
 
-        $(window).scroll(function() {
+        window.addEventListener('scroll', function() {
             doScroll();
         });
     }
@@ -46,36 +46,61 @@ function mainInit() {
 
 function doScroll() {
 
-    topz=$(window).scrollTop();
-    heightz=$(window).height();
-    bottomz=topz+heightz;
-    heightDiv=$scrollingDiv.height() + 50;
+    topz = window.pageYOffset;
+    heightz = window.innerHeight;
+    bottomz = topz + heightz;
+    heightDiv = $scrollingDiv.offsetHeight + 50;
 
     if(topz > $divpos) {
-        if(heightDiv<heightz) {
-          $scrollingDiv.stop().animate({marginTop:(topz - $divpos) + "px"}, 500);
-          $margin=(topz - $divpos);
+        if(heightDiv < heightz) {
+          animateMarginTop($scrollingDiv, (topz - $divpos), 500);
+          $margin = (topz - $divpos);
         }
         else {
-            topv=(($divpos - topz) + $margin);
-            bottomv=(topv+heightDiv)-heightz;
+            topv = (($divpos - topz) + $margin);
+            bottomv = (topv + heightDiv) - heightz;
             if((topv < 0) && (bottomv > 0)) {
                     // Nothing
             }
             else if(topv > 0) {
-                $scrollingDiv.stop().animate({marginTop:(topz - $divpos) + "px"}, 500);
-                $margin=(topz - $divpos);
+                animateMarginTop($scrollingDiv, (topz - $divpos), 500);
+                $margin = (topz - $divpos);
             }
             else {
-                $scrollingDiv.stop().animate({marginTop:((topz + heightz) - (heightDiv+$divpos)) + "px"}, 500);
-                $margin=(topz + heightz) - (heightDiv+$divpos);
+                animateMarginTop($scrollingDiv, ((topz + heightz) - (heightDiv + $divpos)), 500);
+                $margin = (topz + heightz) - (heightDiv + $divpos);
             }
         }
     }
     else {
-        $scrollingDiv.stop();
-	$scrollingDiv.css("marginTop", "0px");
-        $margin=0;
+        cancelAnimateMarginTop($scrollingDiv);
+        $scrollingDiv.style.marginTop = "0px";
+        $margin = 0;
+    }
+}
+
+var _scrollAnimId = null;
+function animateMarginTop(el, target, duration) {
+    if (_scrollAnimId) cancelAnimationFrame(_scrollAnimId);
+    var start = parseFloat(el.style.marginTop) || 0;
+    var startTime = null;
+    function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        var progress = Math.min((timestamp - startTime) / duration, 1);
+        el.style.marginTop = (start + (target - start) * progress) + "px";
+        if (progress < 1) {
+            _scrollAnimId = requestAnimationFrame(step);
+        } else {
+            _scrollAnimId = null;
+        }
+    }
+    _scrollAnimId = requestAnimationFrame(step);
+}
+
+function cancelAnimateMarginTop(el) {
+    if (_scrollAnimId) {
+        cancelAnimationFrame(_scrollAnimId);
+        _scrollAnimId = null;
     }
 }
 
@@ -84,17 +109,12 @@ function FamInit() {
     renderAccordion();
     SpeciesInit();
 
-    if ($.fn.button) {
-        $(".buttonType").button();
-        $(".buttonType1").button();
-    }
-
-    $scrollingDiv = $("#accordion-root");
-    if ($scrollingDiv.length) {
-        $divpos = Math.round($scrollingDiv.position().top - 15);
+    $scrollingDiv = document.getElementById('accordion-root');
+    if ($scrollingDiv) {
+        $divpos = Math.round($scrollingDiv.getBoundingClientRect().top + window.pageYOffset - 15);
         $margin = 0;
 
-        $(window).scroll(function() {
+        window.addEventListener('scroll', function() {
             doScroll();
         });
     }
@@ -109,27 +129,35 @@ function photoInit() {
 }
 
 function resize() {
-    $("#leftcolumn").height($(document).height() - $('#topsection').height());
+    var leftCol = document.getElementById('leftcolumn');
+    var topSec = document.getElementById('topsection');
+    if (leftCol && topSec) {
+        leftCol.style.height = (document.documentElement.scrollHeight - topSec.offsetHeight) + 'px';
+    }
 }
 
 function goToByScroll(id) {
-    offset = $(id).offset();
-    if(offset != null) {
-        if(offset.top >300)
-            $('html,body').animate({scrollTop: ($(id).offset().top - 10)},'slow');
+    var el;
+    try { el = document.querySelector(id); } catch(e) { return; }
+    if (!el) return;
+
+    var top = el.getBoundingClientRect().top + window.pageYOffset;
+    if (top > 300) {
+        window.scrollTo({ top: top - 10, behavior: 'smooth' });
     }
 
-    $.expr[":"].econtains = function(obj, index, meta, stack){
-        return (obj.textContent || obj.innerText || $(obj).text() || "") == meta[3];
-    }
-
-    sel = id.replace(/#/g, "").replace(/_/g, " ");
-    catline = ".catheader:econtains('" + sel + "')";
-    sel = ".catheader:econtains('" + sel + "') a";
-    $(catline).css("border-color", "red");
-    $(sel).css("color", "red");
-    window.setTimeout(function() {
-            $(catline).css("border-color", "#dcd637");
-            $(sel).css("color", "#dcd637");
-        }, 2000);
+    var sel = id.replace(/#/g, "").replace(/_/g, " ");
+    var headers = document.querySelectorAll('.catheader');
+    headers.forEach(function(header) {
+        var text = (header.textContent || header.innerText || "").trim();
+        if (text === sel) {
+            header.style.borderColor = "red";
+            var link = header.querySelector('a');
+            if (link) link.style.color = "red";
+            setTimeout(function() {
+                header.style.borderColor = "#dcd637";
+                if (link) link.style.color = "#dcd637";
+            }, 2000);
+        }
+    });
 }

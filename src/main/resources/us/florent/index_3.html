@@ -8,14 +8,12 @@
         <meta name="author" content="Florent Charpin" />
         <link rel="alternate" type="application/rss+xml" title="Reefguide.org RSS feed" href="http://reefguide.org/reefguide.xml" />
 
-        <script type="text/javascript" src="jquery/js/jquery-1.7.1.min.js"></script>
         <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
         <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
         <script type="text/javascript" src="js/TopNav.js"></script>
         <script type="text/javascript" src="js/AccordionMenu.js"></script>
         <script type="text/javascript" src="js/mainindex.js"></script>
 
-        <link type="text/css" href="jquery/css/ui-lightness/jquery-ui-1.8.16.custom.css" rel="Stylesheet" />
         <link rel="stylesheet" type="text/css" href="css/all.css" />
         <link rel="stylesheet" type="text/css" href="css/index.css" />
 
@@ -71,7 +69,7 @@
 
     <body>
         <script>
-            $(document).ready(mainInit);
+            document.addEventListener('DOMContentLoaded', mainInit);
         </script>
 
         <div id="maincontainer">
