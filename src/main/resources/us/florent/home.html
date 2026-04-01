@@ -7,10 +7,8 @@
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script type="text/javascript" src="js/TopNav.js"></script>
+    <script type="text/javascript" src="js/SpeciesSearch.js"></script>
     <script type="text/javascript" src="js/mainindex.js"></script>
-
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.32/angular.js"></script>
-    <script src="js/controllers.js"></script>
 
     <link rel="stylesheet" type="text/css" href="css/all.css"/>
     <link rel="stylesheet" type="text/css" href="css/index.css"/>
@@ -167,56 +165,7 @@
 
 
 
-        <div id="contentwrapperX" ng-app ng-controller="ListController">
-
-            <br/>
-            <div class="searchpanel">
-                <br/>
-                <div style="margin: auto; text-align: center;">Search:&nbsp;<input ng-model="query"
-                                                                                   ng-change="queryChanged()"> &nbsp;&nbsp;&nbsp;Region:&nbsp;<select
-                        ng-change="regionChanged()" ng-model="selRegion"
-                        ng-options="region.name for region in regions"></select>
-                    &nbsp;<img ng-hide="busyIndicator" src="images/loading2.gif" id="loading-indicator"/><img
-                            ng-show="busyIndicator" src="images/loading.gif" id="loading-indicator"/></div>
-                <br/>
-
-                <table class="result">
-                    <thead class="result">
-                    <tr>
-                        <th></th>
-                        <th>Species Name</th>
-                        <th>Scientific Name</th>
-                        <th>Category</th>
-                    </tr>
-                    </thead>
-                    <tbody ng-repeat="species in filtered = (speciesList | filter:ReefSearch  | limitTo:querycharacters)">
-                    <tr class="red" ng-class-even="'even'" ng-click="details = !details;thumb = doShow(species)"
-                        ng-hide="details">
-                        <td>&nbsp;&nbsp;</td>
-                        <td>{{species.fullname}}</td>
-                        <td><i>{{species.sname}}</i></td>
-                        <td>{{species.subcategory}}</td>
-                    </tr>
-                    <tr ng-class-even="'even'" ng-click="details = !details">
-                        <td colspan="4" ng-show="details">
-                            <div style="display:inline-block;"><img class="thumb" style="height:80px;"
-                                                                    ng-src="{{thumb}}"/></div>
-                            <div class="searchdetails">
-                                <span class="sdname">{{species.fullname}}</span><span class="sdsname">, {{species.sname}}</span><br/>
-                                Category: {{species.subcategory}}<br/>
-                                Size: {{species.size}}&nbsp;&nbsp;&nbsp;&nbsp;Depth: {{species.depth}} ft.<br/>
-                                <a href="{{selRegion.path}}{{species.name}}.html?search={{Xquery}}&area={{selRegion.code}}"
-                                   target="_self" ng-click="details = details;$event.stopPropagation()">Go to
-                                    {{species.fullname}} page</a>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-                <br/><br/><br/>
-            </div>
-            <br/><br/>
-
-        </div>
+        <div id="search-root"></div>
 
         <br/>
 

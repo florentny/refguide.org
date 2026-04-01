@@ -120,8 +120,18 @@ function FamInit() {
     }
 }
 
+function renderSearch() {
+    var searchRoot = document.getElementById('search-root');
+    if (searchRoot && window.SpeciesSearch) {
+        ReactDOM.createRoot(searchRoot).render(
+            React.createElement(SpeciesSearch)
+        );
+    }
+}
+
 function SpeciesInit() {
     renderNav();
+    renderSearch();
 }
 
 function photoInit() {
