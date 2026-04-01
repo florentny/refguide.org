@@ -1,11 +1,11 @@
 
 #contentcolumn {
-    margin-left: 250px; /*Set left margin to LeftColumnWidth*/
+    margin-left: 288px; /*Set left margin to LeftColumnWidth*/
 }
 
 #leftcolumn {
     float: left;
-    width: 250px; /*Width of left column*/
+    width: 288px; /*Width of left column*/
     margin-left: -100%;
     /*background: white;*/
     line-height: 1.3em;
@@ -91,6 +91,23 @@ div.main3 {
 
 div.infobox {
     margin-bottom: 5px;
+    background: #e8e8e8;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+.back-arrow {
+    float: left;
+    width: 16px;
+    height: 16px;
+    margin-right: 2px;
+}
+
+.back-arrow::after {
+    content: '\21A9';
+    font-size: 14px;
+    color: #333;
 }
 
 
@@ -100,6 +117,11 @@ div.navbox {
     line-height:1.2em;
     font-family: Helvetica, sans-serif;
     font-size: 14px;
+}
+
+div.navbox a {
+    color: blue;
+    text-decoration: none;
 }
 
 div.navbox a:hover {
@@ -178,7 +200,7 @@ div.inforefs a:hover {
 div.titledetails {
     margin: 5px 2px 5px 4px;
     text-align: center;
-    border-bottom: 1px black solid;
+    border-bottom: 1px solid #aaa;
     color: orange;
     font-size: 14px;
     font-style: normal;

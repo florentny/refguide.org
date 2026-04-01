@@ -902,37 +902,6 @@ public class genReef4 {
             genFishPixFile(sp, ph, cat, baseIndex, reefRef, header);
         }
 
-        text = new StringBuilder();
-        StringBuilder afterText = new StringBuilder();
-
-        StringBuilder str;
-        boolean before = true;
-        for(var same : group.species) {
-
-            if(same.id.equals(sp.id)) {
-                before = false;
-            }
-            if(!species_collection.getCat(same.id).equals(cat)) {
-                continue;
-            }
-            str = new StringBuilder();
-            int num = same.getNameCount();
-            for(int j = 0; j < num; j++) {
-                if(same.name.equals(sp.id)) {
-                    str.append("<div class=\"infoimg\"><img src=\"").append(base).append("pix/thumb3/").append(same.id).append(same.thumbs.get(j)).append(".jpg\" alt=\"\" title=\"\" /><div>").append(same.name).append("</div></div><br />");
-                    break;
-                } else
-                    str.append("<div class=\"infoimg\"><a href=\"").append(same.id).append(".html\"><img src=\"").append(base).append("pix/thumb3/").append(same.id).append(same.thumbs.get(j)).append(".jpg\" alt=\"\" title=\"\" /><div>").append(same.getDispName(j)).append("</div></a></div><br />");
-            }
-            if(before)
-                afterText.append(str);
-            else
-                text.append(str);
-
-        }
-        text.append(afterText);
-
-        outString = outString.replace("__SAMELIST__", text.toString());
         outString = outString.replace("__FISH_HTML__", output.toString());
 
         writeToFile(outString, baseIndex + "/" + sp.id + ".html");
@@ -1666,7 +1635,7 @@ public class genReef4 {
         }
     }
 
-    public static void main(String... args) throws Exception {
+    static void main(String... args) throws Exception {
 
         System.setProperty("org.slf4j.simpleLogger.log.org.mongodb.driver", "warn");
         //Thread.sleep(10000);
@@ -1676,8 +1645,7 @@ public class genReef4 {
             reef.basepathIndexAll = args[0];
         }
 
-        reef.createSite(reef.basepathIndexAll, false);
-        //reef.createSite(reef.basepathIndexAll, true);;
+        reef.createSite(reef.basepathIndexAll, true);
         reef.closeMongoDB();
     }
 

@@ -180,6 +180,15 @@ ul.topnav li ul.subnav li a:hover {
     float: left;
     display: block;
     vertical-align: middle;
+    width: 16px;
+    height: 16px;
+}
+
+.arrow::after {
+    content: '\2713';
+    font-size: 14px;
+    font-weight: bold;
+    color: orange;
 }
 
 .arrow2 {

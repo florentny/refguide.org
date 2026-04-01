@@ -74,7 +74,7 @@
                     return e('li', { key: i },
                         e('a', { href: child.href },
                             e('div', {
-                                className: isChecked ? 'ui-icon ui-icon-check arrow' : 'arrow2'
+                                className: isChecked ? 'arrow' : 'arrow2'
                             }, '\u00a0'),
                             child.label
                         )
@@ -143,7 +143,7 @@
                             style: { cursor: 'pointer' }
                         },
                             e('div', {
-                                className: isChecked ? 'ui-icon ui-icon-check arrow' : 'arrow2'
+                                className: isChecked ? 'arrow' : 'arrow2'
                             }, '\u00a0'),
                             size.label
                         )
