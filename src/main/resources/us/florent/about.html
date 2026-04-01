@@ -3,20 +3,29 @@
     <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <title>Florent's Guide To The Tropical Reefs - Fish, Creatures and Corals</title>
-        
-        <script type="text/javascript" src="jquery/js/jquery-1.7.1.min.js"></script>
-        <script type="text/javascript" src="jquery/js/jquery-ui-1.8.16.custom.min.js"></script>
+
+        <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+        <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+        <script type="text/javascript" src="js/TopNav.js"></script>
         <script type="text/javascript" src="js/mainindex.js"></script>
 
-        <link type="text/css" href="jquery/css/ui-lightness/jquery-ui-1.8.16.custom.css" rel="Stylesheet" />
         <link rel="stylesheet" type="text/css" href="css/all.css" />
         <link rel="stylesheet" type="text/css" href="css/index.css" />
-        
-        
+
+        <script type="text/javascript">
+            var navItems = [
+                { label: 'Home', href: 'home.html' },
+                { label: 'Latest Updates', href: 'latest.html' },
+                { label: 'About', href: 'about.html' },
+                { label: 'RSS', href: 'http://reefguide.org/reefguide.xml' },
+                { label: 'Search Species', href: 'search.html' }
+            ];
+        </script>
+
          <!--
-            Web site design and all photographs copyright 2004-2025 Florent Charpin. All rights reserved. Email: www@reefguide.org
+            Web site design and all photographs copyright 2004-2026 Florent Charpin. All rights reserved. Email: www@reefguide.org
          -->
-         
+
                  <style type="text/css">
 div.guidename {
     text-align: center;
@@ -60,7 +69,7 @@ div.guidename {
     text-align: center;
 }
     </style>
-    
+
     __ANALYTICS__
 
     </head>
@@ -68,7 +77,7 @@ div.guidename {
 
     <body>
         <script>
-            $(document).ready(SpeciesInit);
+            document.addEventListener('DOMContentLoaded', SpeciesInit);
         </script>
 
         <div id="maincontainer">
@@ -76,38 +85,21 @@ div.guidename {
             <div id="topsection" class="banner1">
                 <h4>Florent's Guide To The</h4>
                 <h1>Tropical Reefs</h1>
-            
-         <ul class="topnav">
-          <li class="ba">
-            <a  href="home.html">Home</a>
-          </li>
 
-          <li class="ba">
-            <a href="latest.html">Latest Updates</a>
-          </li>
-          <li class="ba">
-            <a href="about.html">About</a>
-          </li>
-          <li class="ba">
-            <a href="http://reefguide.org/reefguide.xml">RSS</a>
-          </li>
-          <li class="ba">
-            <a href="search.html">Search Species</a>
-          </li>
-        </ul>
+                <div id="topnav-root"></div>
 
-      </div>
-            
+            </div>
+
       <div id="contentwrapper">
-            
-     <br /> 
+
+     <br />
             <div style="color: white;text-align: center;">
-                
+
                 <span style="font-weight: bold;">For all comments or question, please  email &#119;&#119;&#119;&#064;&#114;&#101;&#101;&#102;&#103;&#117;&#105;&#100;&#101;&#046;&#111;&#114;&#103;</span>
                  <br /> <br />
                  <div class="stats">
                 Web design &copy; Florent Charpin<br />
-                All pictures on this web site are &copy; Florent Charpin 2025 All rights reserved.<br />
+                All pictures on this web site are &copy; Florent Charpin 2026 All rights reserved.<br />
                 Any redistribution or reproduction of part or all of the contents of this web site in any form is prohibited<br />except with our express written permission.
                  </div>
 
@@ -193,9 +185,9 @@ div.guidename {
                    <img src="pix/self1.jpg" alt="" title=""/>
                 <br />
                 <br />
-                
+
             </div>
-            
+
             </div>
 
         </div>

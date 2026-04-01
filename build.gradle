@@ -2,8 +2,8 @@ plugins {
     id 'java'
 }
 
-group 'us.florent'
-version '3.5'
+group = 'us.florent'
+version = '4.1'
 
 repositories {
     mavenCentral()
@@ -14,7 +14,7 @@ tasks.named('wrapper') {
 }
 
 jar {
-    duplicatesStrategy(DuplicatesStrategy.INCLUDE)
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
     manifest {
         attributes 'Main-Class': 'us.florent.genReef35'
     }

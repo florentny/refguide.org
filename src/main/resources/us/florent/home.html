@@ -4,22 +4,29 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <title>Florent's Guide To The Tropical Reefs - Fish, Creatures and Corals</title>
 
-    <script type="text/javascript" src="jquery/js/jquery-1.7.1.min.js"></script>
-    <script type="text/javascript" src="jquery/js/jquery-ui-1.8.16.custom.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script type="text/javascript" src="js/TopNav.js"></script>
+    <script type="text/javascript" src="js/SpeciesSearch.js"></script>
     <script type="text/javascript" src="js/mainindex.js"></script>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.32/angular.js"></script>
-    <script src="js/controllers.js"></script>
-
-    <link type="text/css" href="jquery/css/ui-lightness/jquery-ui-1.8.16.custom.css" rel="Stylesheet"/>
     <link rel="stylesheet" type="text/css" href="css/all.css"/>
     <link rel="stylesheet" type="text/css" href="css/index.css"/>
     <link rel="stylesheet" type="text/css" href="css/search.css" />
     <link rel="stylesheet" type="text/css" href="css/home.css" />
 
+    <script type="text/javascript">
+        var navItems = [
+            { label: 'Home', href: 'home.html' },
+            { label: 'Latest Updates', href: 'latest.html' },
+            { label: 'About', href: 'about.html' },
+            { label: 'RSS', href: 'http://reefguide.org/reefguide.xml' },
+            { label: 'Search Species', href: 'search.html' }
+        ];
+    </script>
 
     <!--
-       Web site design and all photographs copyright 2004-2025 Florent Charpin. All rights reserved. Email: www@reefguide.org
+       Web site design and all photographs copyright 2004-2026 Florent Charpin. All rights reserved. Email: www@reefguide.org
     -->
 
     __ANALYTICS__
@@ -29,7 +36,7 @@
 
 <body>
 <script>
-            $(document).ready(SpeciesInit);
+            document.addEventListener('DOMContentLoaded', SpeciesInit);
 
 </script>
 
@@ -39,29 +46,11 @@
         <h4>Florent's Guide To The</h4>
         <h1>Tropical Reefs</h1>
 
-        <ul class="topnav">
-            <li class="ba">
-                <a href="home.html">Home</a>
-            </li>
-
-            <li class="ba">
-                <a href="latest.html">Latest Updates</a>
-            </li>
-            <li class="ba">
-                <a href="about.html">About</a>
-            </li>
-            <li class="ba">
-                <a href="http://reefguide.org/reefguide.xml">RSS</a>
-            </li>
-            <li class="ba">
-                <a href="search.html">Search Species</a>
-            </li>
-        </ul>
+        <div id="topnav-root"></div>
 
     </div>
 
     <div id="contentwrapper">
-        <div style="text-align: right;margin:auto; width:100%; font-size: 10pt;"><a href="http://feeds.feedburner.com/Reefguideorg" rel="alternate" type="application/rss+xml"><img src="//feedburner.google.com/fb/images/pub/feed-icon16x16.png" alt="" style="vertical-align:middle;border:0"/></a>&nbsp;<a href="http://feeds.feedburner.com/Reefguideorg" rel="alternate" type="application/rss+xml">Subscribe to feed&nbsp;</a></div>
 
         <br/>
         <div style="color: rgb(204, 204, 204); font-size: 22pt; font-family: Arial,Helvetica,sans-serif; font-weight: bold; text-align: center;">
@@ -176,56 +165,7 @@
 
 
 
-        <div id="contentwrapperX" ng-app ng-controller="ListController">
-
-            <br/>
-            <div class="searchpanel">
-                <br/>
-                <div style="margin: auto; text-align: center;">Search:&nbsp;<input ng-model="query"
-                                                                                   ng-change="queryChanged()"> &nbsp;&nbsp;&nbsp;Region:&nbsp;<select
-                        ng-change="regionChanged()" ng-model="selRegion"
-                        ng-options="region.name for region in regions"></select>
-                    &nbsp;<img ng-hide="busyIndicator" src="images/loading2.gif" id="loading-indicator"/><img
-                            ng-show="busyIndicator" src="images/loading.gif" id="loading-indicator"/></div>
-                <br/>
-
-                <table class="result">
-                    <thead class="result">
-                    <tr>
-                        <th></th>
-                        <th>Species Name</th>
-                        <th>Scientific Name</th>
-                        <th>Category</th>
-                    </tr>
-                    </thead>
-                    <tbody ng-repeat="species in filtered = (speciesList | filter:ReefSearch  | limitTo:querycharacters)">
-                    <tr class="red" ng-class-even="'even'" ng-click="details = !details;thumb = doShow(species)"
-                        ng-hide="details">
-                        <td>&nbsp;&nbsp;</td>
-                        <td>{{species.fullname}}</td>
-                        <td><i>{{species.sname}}</i></td>
-                        <td>{{species.subcategory}}</td>
-                    </tr>
-                    <tr ng-class-even="'even'" ng-click="details = !details">
-                        <td colspan="4" ng-show="details">
-                            <div style="display:inline-block;"><img class="thumb" style="height:80px;"
-                                                                    ng-src="{{thumb}}"/></div>
-                            <div class="searchdetails">
-                                <span class="sdname">{{species.fullname}}</span><span class="sdsname">, {{species.sname}}</span><br/>
-                                Category: {{species.subcategory}}<br/>
-                                Size: {{species.size}}&nbsp;&nbsp;&nbsp;&nbsp;Depth: {{species.depth}} ft.<br/>
-                                <a href="{{selRegion.path}}{{species.name}}.html?search={{Xquery}}&area={{selRegion.code}}"
-                                   target="_self" ng-click="details = details;$event.stopPropagation()">Go to
-                                    {{species.fullname}} page</a>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-                <br/><br/><br/>
-            </div>
-            <br/><br/>
-
-        </div>
+        <div id="search-root"></div>
 
         <br/>
 
@@ -327,7 +267,7 @@
 
         <br/>
         <div style="color: gray;font-size:14px; text-align: center;border-top: 1px solid gray;">
-            Web design and all pictures &copy; 2025 Florent Charpin<br/>
+            Web design and all pictures &copy; 2026Florent Charpin<br/>
 
             email: &#119;&#119;&#119;&#064;&#114;&#101;&#101;&#102;&#103;&#117;&#105;&#100;&#101;&#046;&#111;&#114;&#103;
         </div>
