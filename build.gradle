@@ -9,6 +9,10 @@ repositories {
     mavenCentral()
 }
 
+tasks.named('wrapper') {
+    gradleVersion = '9.4.1'
+}
+
 jar {
     duplicatesStrategy(DuplicatesStrategy.INCLUDE)
     manifest {
