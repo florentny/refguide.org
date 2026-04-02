@@ -16,6 +16,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -561,8 +562,8 @@ public class genReef4 {
             String date;
             var latest_list = species_collection.getLatest();
             var latestGroup = new page();
-            String pattern = "dd MMM YYYY HH:mm Z";
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+            String pattern = "EEE, dd MMM yyyy HH:mm:ss Z";
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern, Locale.ENGLISH);
             for(var sp : latest_list) {
                 if(sp == null)
                     continue;
@@ -632,25 +633,35 @@ public class genReef4 {
 
         List<Species> sp_list = group.species;
 
-        outString.append("<?xml version=\"1.0\" encoding=\"ISO-8859-1\" ?>\n<rss version=\"2.0\">");
+        String buildDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH).format(new Date());
+
+        outString.append("<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
+        outString.append("<rss version=\"2.0\" xmlns:atom=\"http://www.w3.org/2005/Atom\">");
         outString.append("<channel>\n<title>Reefguide.org</title>\n");
-        outString.append("<link>http://reefguide.org</link>");
+        outString.append("<link>https://reefguide.org</link>");
+        outString.append("<atom:link href=\"https://reefguide.org/reefguide.xml\" rel=\"self\" type=\"application/rss+xml\"/>");
         outString.append("<description>A Guide To The Tropical Reefs</description>");
+        outString.append("<language>en-us</language>");
+        outString.append("<lastBuildDate>").append(buildDate).append("</lastBuildDate>");
 
         AtomicInteger i = new AtomicInteger(0);
         sp_list.forEach(sp -> {
-            outString.append("<item><title>");
-            outString.append(sp.name).append("</title><link>http://reefguide.org/").append(sp.id).append(".html</link>");
-            outString.append("<description>&lt;img src=\"http://reefguide.org/pix/thumb3/").append(sp.id).append(sp.thumbs.getFirst()).append(".jpg\" /&gt;&lt;br /&gt;");
-            outString.append(sp.name).append(" (").append(sp.fullSciName()).append(")&lt;br /&gt;");
-            outString.append("Category: ").append(species_collection.getCat(sp.id).replace("&", "&amp;")).append("&lt;br /&gt;");
-            outString.append("Size: ").append(sp.size).append("&lt;br /&gt;");
-            outString.append("Depth: ").append(sp.depth).append("&lt;br /&gt;");
-            outString.append("Distribution: ").append(String.join(", ", sp.dist)).append("&lt;br /&gt;");
-            outString.append("</description>");
-            if(group.dates.get(i.get()) != null) {
-                outString.append("<pubDate>").append(group.dates.get(i.getAndIncrement())).append("</pubDate>");
-
+            String itemUrl = "https://reefguide.org/" + sp.id + ".html";
+            outString.append("<item>");
+            outString.append("<title>").append(sp.name).append("</title>");
+            outString.append("<link>").append(itemUrl).append("</link>");
+            outString.append("<guid isPermaLink=\"true\">").append(itemUrl).append("</guid>");
+            outString.append("<description><![CDATA[");
+            outString.append("<img src=\"https://reefguide.org/pix/thumb3/").append(sp.id).append(sp.thumbs.getFirst()).append(".jpg\" /><br />");
+            outString.append(sp.name).append(" (").append(sp.fullSciName()).append(")<br />");
+            outString.append("Category: ").append(species_collection.getCat(sp.id)).append("<br />");
+            outString.append("Size: ").append(sp.size).append("<br />");
+            outString.append("Depth: ").append(sp.depth).append("<br />");
+            outString.append("Distribution: ").append(String.join(", ", sp.dist));
+            outString.append("]]></description>");
+            int idx = i.getAndIncrement();
+            if(group.dates.get(idx) != null) {
+                outString.append("<pubDate>").append(group.dates.get(idx)).append("</pubDate>");
             }
             outString.append("</item>");
         });

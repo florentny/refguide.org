@@ -45,7 +45,7 @@ Main class (`us.florent.genReef35` per the JAR manifest). Handles:
 Swing desktop app for editing species metadata (distributions, photos, synonyms). Uses `ListDialog` and `distDialog` for selection UIs.
 
 ### Web Frontend
-AngularJS + jQuery SPA with HTML templates (`home.html`, `species.html`, `search.html`, etc.) and controllers in `controllers.js`. Served statically; data comes from generated JSON/HTML files.
+React SPA (migrated from AngularJS + jQuery) with HTML templates (`home.html`, `species.html`, `search.html`, etc.) and React components in `src/main/js/` (`AccordionMenu.js`, `SpeciesSearch.js`, `TopNav.js`, `dynPage.js`, `mainindex.js`). Served statically; data comes from generated JSON/HTML files.
 
 ## Key Design Notes
 
