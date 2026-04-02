@@ -48,11 +48,28 @@ public class SpeciesTree {
 
     Map<String, SpeciesNode> speciesMap;
 
+    Map<String, String> categoryToSuperCategory;
+
+    public enum SuperCategory {
+        FISH("Fish"), INVERTEBRATES("Invertebrates"), SPONGES("Sponges"), CORALS("Corals"), ALGAE("Algae"), MAMMALS("Mammals"), OTHER("Other");
+
+        private final String name;
+
+        SuperCategory(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
     public static class Taxon {
         private String name;
         private String rank;
         boolean wasInserted = false;
         private String category = null;
+        private String superCategory = null;
         private String orgName = null;
         int AphiaID;
         int numSpecies = 0;
@@ -73,6 +90,14 @@ public class SpeciesTree {
 
         public void setCategory(String category) {
             this.category = category;
+        }
+
+        public String getSuperCategory() {
+            return superCategory;
+        }
+
+        public void setSuperCategory(String superCategory) {
+            this.superCategory = superCategory;
         }
 
 
@@ -447,6 +472,8 @@ public class SpeciesTree {
             }
         }
 
+        categoryToSuperCategory = buildCategoryToSuperCategoryMap(db);
+
         speciesMap = new HashMap<>();
         collection = db.getCollection("species");
         for(Document doc : collection.find()) {
@@ -484,11 +511,42 @@ public class SpeciesTree {
         var parent = sp.getParent();
         while(parent != null) {
             if(parent.getValue().getCategory() != null) {
-                sp.getValue().setCategory(parent.getValue().getCategory());
+                String cat = parent.getValue().getCategory();
+                sp.getValue().setCategory(cat);
+                if(categoryToSuperCategory != null) {
+                    sp.getValue().setSuperCategory(categoryToSuperCategory.get(cat));
+                }
                 return;
             }
             parent = parent.getParent();
         }
+    }
+
+    private Map<String, String> buildCategoryToSuperCategoryMap(MongoDatabase db) {
+        MongoCollection<Document> collection = db.getCollection("reefconfig");
+        Document doc = collection.find(new Document("reef", "reeflist4")).first();
+        Map<String, String> map = new HashMap<>();
+        if(doc == null) return map;
+        for(String superCat : doc.keySet()) {
+            if(superCat.equals("_id") || superCat.equals("reef")) continue;
+            Object value = doc.get(superCat);
+            if(!(value instanceof Document groups)) continue;
+            for(String group : groups.keySet()) {
+                Object groupValue = groups.get(group);
+                if(groupValue instanceof List<?> outerList) {
+                    for(Object subList : outerList) {
+                        if(subList instanceof List<?> innerList) {
+                            for(Object category : innerList) {
+                                if(category instanceof String cat) {
+                                    map.put(cat, superCat);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return map;
     }
 
     public String getLastCategoryForSpeciesId(String speciesId) {
@@ -802,8 +860,8 @@ public class SpeciesTree {
                 //result.forEach(t -> System.out.print(t.getName() + "[}" + t.getRank() + "] - "));
                 //System.out.println();
 
-                compareTaxonLists(sp.getName(), list, result);
-                //compareTaxonLists(sp.getName(), result, list);
+                //compareTaxonLists(sp.getName(), list, result);
+                compareTaxonLists(sp.getName(), result, list);
 
             }
         } catch(IOException e) {
