@@ -58,14 +58,13 @@
     }
 
     function AccordionSection(props) {
-        var state = React.useState(props.active || false);
-        var expanded = state[0];
-        var setExpanded = state[1];
+        var expanded = props.expanded;
+        var onToggle = props.onToggle;
 
         return e('div', null,
             e('h3', {
                 className: 'accordion-header' + (expanded ? ' accordion-header-active' : ''),
-                onClick: function() { setExpanded(!expanded); }
+                onClick: onToggle
             },
                 e('a', null, props.name)
             ),
@@ -83,13 +82,18 @@
         var data = props.data;
         if (!data || !data.sections) return null;
 
+        var state = React.useState(data.activeSection != null ? data.activeSection : -1);
+        var openIndex = state[0];
+        var setOpenIndex = state[1];
+
         return e(React.Fragment, null,
             data.sections.map(function(section, i) {
                 return e(AccordionSection, {
                     key: i,
                     name: section.name,
                     families: section.families,
-                    active: i === data.activeSection
+                    expanded: openIndex === i,
+                    onToggle: function() { setOpenIndex(openIndex === i ? -1 : i); }
                 });
             })
         );

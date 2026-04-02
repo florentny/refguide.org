@@ -44,7 +44,7 @@ function creategrid() {
         let cookie = getCookie("Reefsize");
         if (cookie === null) {
             if (viewWidth < 920) cookie = "0";
-            else if (viewWidth > 2200) cookie = "3";
+            else if (viewWidth > 1600) cookie = "3";
         }
         if (cookie !== null && SIZE_CONFIGS[cookie]) {
             currentConfig = SIZE_CONFIGS[cookie];
